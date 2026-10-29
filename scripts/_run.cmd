@@ -26,6 +26,10 @@ if not exist "%LAB_JAR%" (
   exit /b 2
 )
 rem Arguments are passed by the public entry points; SHIFT does not change %%*.
+rem Use UTF-8 for the Java process, then restore this console's previous code page.
+for /f "tokens=2 delims=:" %%c in ('chcp') do set "LAB_CODEPAGE=%%c"
+chcp 65001 >nul
 "%LAB_JAVA%" "-Dlab.home=%LAB_ROOT%" -jar "%LAB_JAR%" %LAB_ARGS%
 set "LAB_EXIT=%errorlevel%"
+if defined LAB_CODEPAGE chcp %LAB_CODEPAGE% >nul
 endlocal & exit /b %LAB_EXIT%

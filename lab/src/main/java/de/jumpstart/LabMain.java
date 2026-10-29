@@ -11,6 +11,7 @@ public final class LabMain {
     private LabMain() {}
 
     public static void main(String[] args) {
+        Output.configure();
         try {
             run(new Options(args));
         } catch (Exception e) {

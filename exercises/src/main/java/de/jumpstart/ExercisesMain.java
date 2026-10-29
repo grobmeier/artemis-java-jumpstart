@@ -4,6 +4,7 @@ public final class ExercisesMain {
     private ExercisesMain() {}
 
     public static void main(String[] args) {
+        Output.configure();
         try {
             var options = new Options(args);
             var settings = new Settings(options);
