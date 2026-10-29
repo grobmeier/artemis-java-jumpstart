@@ -1,0 +1,8 @@
+**/target/
+runtime/
+config/*.local.properties
+config/*.p12
+config/users.properties
+.idea/
+*.iml
+.DS_Store

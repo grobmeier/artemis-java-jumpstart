@@ -1,0 +1,8 @@
+Artemis Java Jumpstart
+Copyright 2026 Artemis Java Jumpstart contributors
+
+This project includes the Apache Maven Wrapper (Apache Software Foundation), licensed under Apache License 2.0.
+Runtime JARs contain Apache Artemis and transitive dependencies. Original META-INF license and notice resources are retained in the shaded JARs where possible. See docs/versions.md and the licenses/ directory in the runtime archive for dependency license details.
+Jakarta Messaging API: Eclipse Foundation, Eclipse Public License 2.0 / GPL 2.0 with Classpath Exception.
+H2 Database: MPL 2.0 or EPL 1.0.
+Jackson: Apache License 2.0. SLF4J: MIT License.

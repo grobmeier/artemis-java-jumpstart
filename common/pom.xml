@@ -1,0 +1,32 @@
+<?xml version="1.0" ?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>de.jumpstart</groupId>
+    <artifactId>artemis-java-jumpstart</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
+  <artifactId>common</artifactId>
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.artemis</groupId>
+      <artifactId>artemis-jakarta-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.jms</groupId>
+      <artifactId>jakarta.jms-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+    </dependency>
+  </dependencies>
+  <build>
+    <finalName>common</finalName>
+    <plugins/>
+  </build>
+</project>
