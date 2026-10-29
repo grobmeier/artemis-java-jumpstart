@@ -2,3 +2,7 @@
 *.cmd text eol=crlf
 *.jar binary
 *.zip binary
+
+# Preserve upstream license/notice formatting without local whitespace fixes.
+licenses/*-LICENSE.txt -whitespace
+licenses/*-NOTICE.txt -whitespace
