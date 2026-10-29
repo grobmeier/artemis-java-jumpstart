@@ -23,10 +23,10 @@ public final class LabMain {
     public static void run(Options o) throws Exception {
         if (o.word(0, "help").equals("help")) {
             System.out.println(
-                    "Lab: queue | s01 … s16, danach produce | consume | subscribe | register |"
+                    "Lab: queue | s01 … s16, then produce | consume | subscribe | register |"
                             + " unsubscribe | browse | replay | request | reply | transfer.\n"
-                            + "Zusätzlich: doctor [build|runtime], ledger [show|reset --confirm]."
-                            + " Optionen und Beispiele: docs/scenarios.md");
+                            + "Also: doctor [build|runtime], ledger [show|reset --confirm]."
+                            + " Options and examples: docs/scenarios.md");
             return;
         }
         var s = new Settings(o);
@@ -39,7 +39,7 @@ public final class LabMain {
                 if (o.word(1, "show").equals("reset")) {
                     if (!o.flag("confirm"))
                         throw new UsageException(
-                                "Ledger-Reset benötigt --confirm und gestoppte Worker.");
+                                "Ledger reset requires --confirm and stopped workers.");
                     ledger.clear();
                 }
                 System.out.println("ledgerEntries=" + ledger.count());
@@ -50,7 +50,7 @@ public final class LabMain {
                 o.get("scenario", o.word(0, "queue").equals("queue") ? "s01" : o.word(0, "s01"))
                         .toLowerCase(Locale.ROOT);
         if (!scenario.matches("s(0[1-9]|1[0-6])"))
-            throw new UsageException("Szenario muss s01 bis s16 sein.");
+            throw new UsageException("Scenario must be s01 through s16.");
         String action = o.word(1, "consume");
         if (action.equals("produce")) {
             produce(s, o, scenario);
@@ -75,7 +75,7 @@ public final class LabMain {
             try (var session = connection.createSession(true, Session.SESSION_TRANSACTED)) {
                 if (action.equals("unsubscribe")) {
                     session.unsubscribe(subscription);
-                    System.out.println("Subscription entfernt: " + subscription);
+                    System.out.println("Subscription removed: " + subscription);
                     return;
                 }
                 if (action.equals("cleanup")) {
@@ -119,7 +119,7 @@ public final class LabMain {
                     System.out.flush();
                     if (action.equals("register")) return;
                     if (!Set.of("consume", "subscribe", "transfer", "reply").contains(action))
-                        throw new UsageException("Unbekannte Aktion; lab help aufrufen.");
+                        throw new UsageException("Unknown action; run lab help.");
                     consume(s, o, scenario, action, session, consumer);
                 }
             }
@@ -135,7 +135,7 @@ public final class LabMain {
                     session.createTopic(s.name(scenario, "orders.events"));
             default ->
                     session.createQueue(
-                            s.name(scenario, "orders." + Settings.token(target, "Ziel")));
+                            s.name(scenario, "orders." + Settings.token(target, "Target")));
         };
     }
 
@@ -219,7 +219,7 @@ public final class LabMain {
                 if (m == null) {
                     System.out.println("TIMEOUT scenario=" + scenario + " received=" + received);
                     if (o.flag("continuous")) continue;
-                    if (received < limit) throw new UsageException("Empfangsfrist abgelaufen");
+                    if (received < limit) throw new UsageException("Receive timeout expired");
                 }
                 received++;
                 Messages.log(scenario, worker, "RECEIVE", m);
@@ -238,7 +238,7 @@ public final class LabMain {
                 }
                 if (action.equals("reply")) {
                     if (m.getJMSReplyTo() == null)
-                        throw new UsageException("Request benötigt JMSReplyTo.");
+                        throw new UsageException("Request requires JMSReplyTo.");
                     try (var output = session.createProducer(m.getJMSReplyTo())) {
                         var response = copy(session, m);
                         response.setJMSCorrelationID(m.getJMSMessageID());
@@ -298,12 +298,12 @@ public final class LabMain {
     private static void cleanup(Settings s, Options o, String scenario, Session session)
             throws Exception {
         if (!o.flag("confirm"))
-            throw new UsageException("Cleanup benötigt --confirm; nur leere Ziele ohne Consumer.");
+            throw new UsageException("Cleanup requires --confirm; only empty destinations without consumers.");
         if (Set.of("s03", "s04", "s07", "s14").contains(scenario))
             throw new UsageException(
-                    "Topic-Ressourcen gezielt mit unsubscribe und identischer"
-                            + " Subscription-Identität entfernen.");
-        String target = Settings.token(o.get("target", "incoming"), "Ziel");
+                    "Remove topic resources with unsubscribe and the same"
+                            + " subscription identity.");
+        String target = Settings.token(o.get("target", "incoming"), "Target");
         String queue =
                 Set.of("dlq", "expiry").contains(target)
                         ? errorQueue(s, scenario, target).split("::")[1]
@@ -313,14 +313,14 @@ public final class LabMain {
         var name = org.apache.activemq.artemis.api.core.SimpleString.of(queue);
         var info = core.queueQuery(name);
         if (!info.isExists()) {
-            System.out.println("Ziel existiert nicht.");
+            System.out.println("Destination does not exist.");
             return;
         }
         if (info.getConsumerCount() != 0 || info.getMessageCount() != 0)
             throw new UsageException(
-                    "Cleanup verweigert: Ziel ist belegt oder hat aktive Consumer.");
+                    "Cleanup refused: destination contains messages or has active consumers.");
         core.deleteQueue(name);
-        System.out.println("Leere eigene Queue entfernt: " + queue);
+        System.out.println("Empty owned queue removed: " + queue);
     }
 
     private static void browse(Settings s, Options o, String scenario, Session session)
@@ -330,7 +330,7 @@ public final class LabMain {
                 session.createQueue(
                         Set.of("dlq", "expiry").contains(target)
                                 ? errorQueue(s, scenario, target)
-                                : s.name(scenario, "orders." + Settings.token(target, "Ziel")));
+                                : s.name(scenario, "orders." + Settings.token(target, "Target")));
         try (var browser = session.createBrowser(queue)) {
             int n = 0;
             var rows = browser.getEnumeration();
@@ -343,7 +343,7 @@ public final class LabMain {
                             + queue.getQueueName()
                             + " visible="
                             + n
-                            + " (Momentaufnahme; aktive Zustellungen nicht enthalten)");
+                            + " (snapshot; active deliveries excluded)");
         }
     }
 
@@ -359,7 +359,7 @@ public final class LabMain {
                                 session.createQueue(s.name(scenario, "orders.incoming")))) {
             for (int i = 0; i < o.number("count", 1, 1, 1000); i++) {
                 Message m = input.receive(o.number("timeout", 5000, 100, 60000));
-                if (m == null) throw new UsageException("DLQ leer oder Empfangsfrist abgelaufen");
+                if (m == null) throw new UsageException("DLQ empty or receive timeout expired");
                 var b = Messages.body(m);
                 var repaired =
                         Messages.create(
@@ -401,9 +401,9 @@ public final class LabMain {
             session.commit();
             connection.start();
             Message response = input.receive(o.number("timeout", 3000, 100, 60000));
-            if (response == null) throw new UsageException("Keine Antwort innerhalb der Frist");
+            if (response == null) throw new UsageException("No reply within the timeout");
             if (!request.getJMSMessageID().equals(response.getJMSCorrelationID()))
-                throw new UsageException("Falsche Correlation-ID");
+                throw new UsageException("Incorrect correlation ID");
             Messages.log(scenario, "requester", "REPLY", response);
             session.commit();
             System.out.println("correlation=" + response.getJMSCorrelationID());
@@ -416,7 +416,7 @@ public final class LabMain {
         System.out.println(
                 "Java=" + Runtime.version() + " java.home=" + System.getProperty("java.home"));
         System.out.println(
-                "Profil="
+                "Profile="
                         + (s.remote() ? "remote" : "local")
                         + " host="
                         + s.host()
@@ -426,32 +426,32 @@ public final class LabMain {
                         + s.namespace());
         if (o.word(1, "runtime").equals("build")) {
             if (ToolProviderCheck.compilerMissing())
-                throw new UsageException("Zum Bauen wird ein JDK benötigt.");
+                throw new UsageException("A JDK is required to build.");
             if (!Files.isRegularFile(s.home.resolve(".mvn/wrapper/maven-wrapper.jar")))
-                throw new UsageException("Maven Wrapper fehlt.");
+                throw new UsageException("Maven Wrapper is missing.");
             System.out.println(
-                    "Build-Voraussetzungen vorhanden; Abhängigkeiten/Proxy werden beim Build"
-                            + " geprüft.");
+                    "Build prerequisites available; dependencies/proxy will be checked during"
+                            + " the build.");
             return;
         }
         for (String artifact : List.of("broker", "lab"))
             if (!Files.isRegularFile(s.home.resolve(artifact + "/target/" + artifact + ".jar"))
                     && !Files.isRegularFile(s.home.resolve("lib/" + artifact + ".jar")))
-                throw new UsageException("Build-Artefakt fehlt: zuerst mvnw.cmd clean verify.");
+                throw new UsageException("Build artifact is missing: run mvnw.cmd clean verify first.");
         try (var socket = new Socket()) {
             socket.connect(new InetSocketAddress(s.host(), s.port()), 1500);
         } catch (Exception e) {
             throw new UsageException(
-                    "Broker-Port nicht erreichbar. Broker in eigenem Terminal starten; Profil,"
-                            + " Firewall und Port prüfen.");
+                    "Broker port is unreachable. Start the broker in its own terminal; check profile,"
+                            + " firewall and port.");
         }
         try (var factory = s.factory();
                 var connection = factory.createConnection(s.user(), s.password())) {
             connection.start();
             System.out.println(
                     "TCP, "
-                            + (s.ssl() ? "TLS und " : "")
-                            + "Authentifizierung erfolgreich. Port ist vom Broker belegt.");
+                            + (s.ssl() ? "TLS and " : "")
+                            + "authentication successful. Port is occupied by the broker.");
         }
     }
 

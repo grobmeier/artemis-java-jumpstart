@@ -4,7 +4,7 @@ import jakarta.jms.Connection;
 import jakarta.jms.Session;
 import jakarta.jms.Topic;
 
-/** Übungsstelle F. Nur dieses Modul enthält absichtlich offene Implementierungen. */
+/** Exercise F. Only this module intentionally contains unfinished implementations. */
 public final class FExercise {
     private FExercise() {}
 
@@ -13,12 +13,12 @@ public final class FExercise {
                 Connection connection = factory.createConnection(s.user(), s.password())) {
             try (Session session = connection.createSession(true, Session.SESSION_TRANSACTED)) {
                 Topic destination = session.createTopic(s.name("s07", "orders.events"));
-                // TODO(F): Setze JMS-Properties konsistent zum JSON und verwende
+                // TODO(F): Set JMS properties consistently with the JSON and use
                 // createConsumer(destination, selector).
-                // Verwende o.word(1,"consume"), o.number("count",10,1,1000) und einen begrenzten
+                // Use o.word(1,"consume"), o.number("count",10,1,1000) and a bounded
                 // receive(timeout).
                 throw new UsageException(
-                        "Übungsstelle F ist noch offen. Hinweise: docs/exercises.md.");
+                        "Exercise F is not implemented yet. Hints: docs/exercises.md.");
             }
         }
     }

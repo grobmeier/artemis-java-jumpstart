@@ -15,7 +15,7 @@ public final class SolutionsMain {
                 case "D" -> DSolution.run(settings, options);
                 case "E" -> ESolution.run(settings, options);
                 case "F" -> FSolution.run(settings, options);
-                default -> throw new UsageException("Aufgabe A bis F wählen.");
+                default -> throw new UsageException("Choose exercise A through F.");
             }
         } catch (Exception e) {
             Errors.report(e);

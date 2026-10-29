@@ -4,7 +4,7 @@ import jakarta.jms.*;
 
 import java.util.*;
 
-/** Aufgabe D: eigenständige ausführbare Musterlösung. */
+/** Exercise D: independent executable worked solution. */
 public final class DSolution {
     private DSolution() {}
 
@@ -30,7 +30,7 @@ public final class DSolution {
                                                             + name));
                             var output = session.createProducer(destination)) {
                         var failed = input.receive(o.number("timeout", 5000, 100, 60000));
-                        if (failed == null) throw new UsageException("DLQ leer.");
+                        if (failed == null) throw new UsageException("DLQ empty.");
                         var body = Messages.body(failed);
                         var fixed =
                                 Messages.create(
@@ -79,7 +79,7 @@ public final class DSolution {
                     return;
                 }
                 if (!Set.of("consume", "subscribe", "register").contains(action))
-                    throw new UsageException("Aktion nicht unterstützt.");
+                    throw new UsageException("Unsupported action.");
                 try (var consumer = session.createConsumer(destination, o.get("selector", null))) {
                     connection.start();
                     System.out.println("READY worker=" + worker);
@@ -89,7 +89,7 @@ public final class DSolution {
                         Message message = consumer.receive(o.number("timeout", 5000, 100, 60000));
                         if (message == null) {
                             if (o.flag("continuous")) continue;
-                            throw new UsageException("Empfangsfrist abgelaufen.");
+                            throw new UsageException("Receive timeout expired.");
                         }
                         Messages.log(scenario, worker, "RECEIVE", message);
 

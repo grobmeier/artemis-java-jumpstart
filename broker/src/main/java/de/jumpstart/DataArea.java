@@ -17,7 +17,7 @@ public final class DataArea implements AutoCloseable {
         Path runtime = settings.home.resolve("runtime");
         data = settings.data().toAbsolutePath().normalize();
         if (!data.startsWith(runtime) || data.equals(runtime))
-            throw new UsageException("Datenverzeichnis muss unter runtime/ liegen.");
+            throw new UsageException("Data directory must be under runtime/.");
         checkPath(runtime);
         checkPath(data);
         Files.createDirectories(runtime);
@@ -32,7 +32,7 @@ public final class DataArea implements AutoCloseable {
         }
         if (candidate == null) {
             channel.close();
-            throw new UsageException("Broker läuft oder Reset ist aktiv; zuerst Broker stoppen.");
+            throw new UsageException("Broker is running or reset is active; stop the broker first.");
         }
         lock = candidate;
         identity = "artemis-java-jumpstart-v1\n" + settings.home + "\n" + data + "\n";
@@ -45,7 +45,7 @@ public final class DataArea implements AutoCloseable {
                 if (Files.isSymbolicLink(part)
                         || !part.toRealPath().equals(part.toAbsolutePath().normalize()))
                     throw new UsageException(
-                            "Symlink/Junction oder nichtkanonischer Datenpfad verweigert.");
+                            "Symlink/Junction or non-canonical data path refused.");
             }
         }
     }
@@ -69,8 +69,8 @@ public final class DataArea implements AutoCloseable {
         if (!Files.isRegularFile(marker, LinkOption.NOFOLLOW_LINKS)
                 || !Files.readString(marker).equals(identity))
             throw new UsageException(
-                    "Reset/Start verweigert: Eigentumsmarker fehlt oder passt nicht zum"
-                            + " Datenpfad.");
+                    "Reset/start refused: ownership marker is missing or does not match the"
+                            + " data path.");
     }
 
     public void reset() throws IOException {

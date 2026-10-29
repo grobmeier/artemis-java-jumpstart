@@ -17,27 +17,27 @@ public final class BrokerMain {
                 case "reset" -> {
                     if (!options.flag("confirm"))
                         throw new UsageException(
-                                "Reset benötigt --confirm und einen gestoppten Broker.");
+                                "Reset requires --confirm and a stopped broker.");
                     try (var area = new DataArea(settings)) {
                         area.reset();
                     }
                     System.out.println(
-                            "Eigener Broker-Datenbereich gelöscht. Ledger bleibt erhalten.");
+                            "Owned broker data deleted. Ledger preserved.");
                 }
                 case "stop" -> {
                     Path lock = settings.home.resolve("runtime/.broker.lock");
                     if (!Files.isRegularFile(lock, LinkOption.NOFOLLOW_LINKS)
                             || Files.isSymbolicLink(stop))
-                        throw new UsageException("Kein eigener Broker gefunden.");
+                        throw new UsageException("No owned broker found.");
                     try (var channel = FileChannel.open(lock, StandardOpenOption.WRITE)) {
                         var probe = channel.tryLock();
                         if (probe != null) {
                             probe.close();
-                            throw new UsageException("Broker ist bereits gestoppt.");
+                            throw new UsageException("Broker is already stopped.");
                         }
                     }
                     Files.writeString(stop, "stop");
-                    System.out.println("Geordnetes Stoppen angefordert; auf Brokerende warten.");
+                    System.out.println("Graceful stop requested; wait for the broker process to exit.");
                 }
                 case "start" -> {
                     var broker = new BrokerRuntime(settings);
@@ -49,7 +49,7 @@ public final class BrokerMain {
                                         broker.close();
                                     } catch (Exception e) {
                                         System.err.println(
-                                                "Broker konnte nicht vollständig stoppen.");
+                                                "Broker could not stop completely.");
                                     }
                             };
                     Thread hook = new Thread(close);

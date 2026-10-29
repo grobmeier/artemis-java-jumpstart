@@ -54,7 +54,7 @@ public final class Options {
             else if (KEYS.contains(k) && i + 1 < args.length && !args[i + 1].startsWith("--"))
                 values.put(k, args[++i]);
             else
-                throw new UsageException("Unbekannte Option oder fehlender Wert. Hilfe: lab help.");
+                throw new UsageException("Unknown option or missing value. Help: lab help.");
         }
     }
 
@@ -79,11 +79,11 @@ public final class Options {
         try {
             n = Integer.parseInt(get(k, "" + fallback));
         } catch (NumberFormatException e) {
-            throw new UsageException("--" + k + " muss eine ganze Zahl sein.");
+            throw new UsageException("--" + k + " must be an integer.");
         }
         if (n < min || n > max)
             throw new UsageException(
-                    "--" + k + " muss zwischen " + min + " und " + max + " liegen.");
+                    "--" + k + " must be between " + min + " and " + max + " inclusive.");
         return n;
     }
 }

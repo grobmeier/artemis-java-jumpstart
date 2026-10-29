@@ -6,7 +6,7 @@
   <version>1.0.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Artemis Java Jumpstart</name>
-  <description>Ausführbares Messaging-Lab für Java-Trainees</description>
+  <description>Executable messaging lab for Java trainees</description>
   <licenses>
     <license>
       <name>Apache License 2.0</name>

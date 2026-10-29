@@ -4,7 +4,7 @@ import jakarta.jms.Connection;
 import jakarta.jms.Queue;
 import jakarta.jms.Session;
 
-/** Übungsstelle E. Nur dieses Modul enthält absichtlich offene Implementierungen. */
+/** Exercise E. Only this module intentionally contains unfinished implementations. */
 public final class EExercise {
     private EExercise() {}
 
@@ -13,12 +13,12 @@ public final class EExercise {
                 Connection connection = factory.createConnection(s.user(), s.password())) {
             try (Session session = connection.createSession(true, Session.SESSION_TRANSACTED)) {
                 Queue destination = session.createQueue(s.name("s09", "orders.incoming"));
-                // TODO(E): Ergänze H2 im exercises/pom.xml: Unique-ID und Effekt in derselben
-                // DB-Transaktion; Crash vor JMS-Commit.
-                // Verwende o.word(1,"consume"), o.number("count",10,1,1000) und einen begrenzten
+                // TODO(E): Add H2 in exercises/pom.xml: unique ID and effect in the same
+                // DB transaction; crash before JMS commit.
+                // Use o.word(1,"consume"), o.number("count",10,1,1000) and a bounded
                 // receive(timeout).
                 throw new UsageException(
-                        "Übungsstelle E ist noch offen. Hinweise: docs/exercises.md.");
+                        "Exercise E is not implemented yet. Hints: docs/exercises.md.");
             }
         }
     }

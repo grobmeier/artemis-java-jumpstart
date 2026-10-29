@@ -74,7 +74,7 @@ class AcceptanceIT {
         }
 
         String end(int expected) throws Exception {
-            assertTrue(process.waitFor(30, TimeUnit.SECONDS), "Prozess hängt: " + text());
+            assertTrue(process.waitFor(30, TimeUnit.SECONDS), "Process did not exit: " + text());
             assertEquals(expected, process.exitValue(), text());
             return text();
         }
@@ -231,7 +231,7 @@ class AcceptanceIT {
             left.addAll(right);
             assertEquals(expected, left);
             try (var activeCleanup = jar("lab", ns, "s02", "cleanup", "--confirm")) {
-                assertTrue(activeCleanup.end(2).contains("aktive Consumer"));
+                assertTrue(activeCleanup.end(2).contains("active consumers"));
             }
         }
         assertTrue(run(ns, "s02", "browse").contains("visible=0"));
@@ -644,26 +644,26 @@ class AcceptanceIT {
                 source.resolve("config/local.properties"),
                 isolated.resolve("config/local.properties"));
         try (var conflict = jarAt(isolated, "broker", "guards", "start")) {
-            assertTrue(conflict.end(2).contains("Port ist belegt"));
+            assertTrue(conflict.end(2).contains("Port is occupied"));
         }
         try (var reset = jar("broker", "guards", "reset", "--confirm")) {
-            assertTrue(reset.end(2).contains("Broker läuft"));
+            assertTrue(reset.end(2).contains("Broker is running"));
         }
         try (var portTaken = jar("broker", "guards", "start", "--dataDir", "runtime/another")) {
-            assertTrue(portTaken.end(2).contains("Broker läuft"));
+            assertTrue(portTaken.end(2).contains("Broker is running"));
         }
         try (var bad = jar("lab", "guards", "s01", "browse", "--password", "definitely-wrong")) {
             String output = bad.end(2);
             assertFalse(output.contains("definitely-wrong"));
         }
         try (var outside = jar("broker", "guards", "reset", "--confirm", "--dataDir", "outside")) {
-            assertTrue(outside.end(2).contains("unter runtime"));
+            assertTrue(outside.end(2).contains("under runtime"));
         }
         try (var invalid = jar("lab", "guards", "s01", "consume", "--unknown")) {
-            assertTrue(invalid.end(2).contains("Unbekannte Option"));
+            assertTrue(invalid.end(2).contains("Unknown option"));
         }
         try (var remote = jar("lab", "guards", "s01", "browse", "--profile", "remote")) {
-            assertTrue(remote.end(2).contains("Remote benötigt"));
+            assertTrue(remote.end(2).contains("Remote requires"));
         }
     }
 
@@ -695,12 +695,12 @@ class AcceptanceIT {
                 }
             try (var absent = launch(root, "doctor", "runtime")) {
                 String diagnostic = absent.end(2);
-                assertTrue(diagnostic.contains("Broker-Port nicht erreichbar"), diagnostic);
+                assertTrue(diagnostic.contains("Broker port is unreachable"), diagnostic);
             }
             try (var b = launch(root, "broker", "start")) {
                 b.ready("BROKER_READY");
                 try (var doctor = launch(root, "doctor", "runtime")) {
-                    assertTrue(doctor.end(0).contains("Authentifizierung erfolgreich"));
+                    assertTrue(doctor.end(0).contains("authentication successful"));
                 }
                 try (var producer = launch(root, "lab", "s01", "produce", "--count", "2")) {
                     producer.end(0);
@@ -747,7 +747,7 @@ class AcceptanceIT {
             String identity = Files.readString(marker);
             Files.writeString(marker, "not-owned");
             try (var refused = launch(root, "broker", "reset", "--confirm")) {
-                assertTrue(refused.end(2).contains("Eigentumsmarker"));
+                assertTrue(refused.end(2).contains("ownership marker"));
             }
             Files.writeString(marker, identity);
             try (var reset = launch(root, "broker", "reset", "--confirm")) {
@@ -1032,7 +1032,7 @@ class AcceptanceIT {
             assertTrue(result.end(0).contains("namespace=training"));
         }
         try (var missing = jarAt(root, "lab", "training", "doctor", "runtime")) {
-            assertTrue(missing.end(2).contains("Build-Artefakt fehlt"));
+            assertTrue(missing.end(2).contains("Build artifact is missing"));
         }
         // Launcher fails before invoking a JAR when JAVA_HOME points to an absent JDK.
         Path script = source.resolve("scripts/lab" + (isWindows() ? ".cmd" : ".sh"));
@@ -1042,7 +1042,7 @@ class AcceptanceIT {
                         : List.of(script.toString(), "help");
         try (var missing =
                 new Job(launch, root, Map.of("JAVA_HOME", root.resolve("no jdk").toString()))) {
-            assertTrue(missing.end(2).contains("Java fehlt"));
+            assertTrue(missing.end(2).contains("Java is missing"));
         }
         run("competing", "s02", "cleanup", "--confirm");
     }

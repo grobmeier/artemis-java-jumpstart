@@ -29,18 +29,18 @@ public final class Settings {
                 file.load(in);
             }
         else if (options.has("config") || System.getenv("LAB_CONFIG") != null)
-            throw new UsageException("Konfigurationsdatei fehlt.");
+            throw new UsageException("Configuration file is missing.");
         if (!Set.of("local", "remote").contains(value("profile", "local")))
-            throw new UsageException("Profil muss local oder remote sein.");
+            throw new UsageException("Profile must be local or remote.");
         token(namespace(), "Namespace");
-        if (!host().matches("[A-Za-z0-9.:-]+")) throw new UsageException("Ungültiger Host.");
-        if (port() < 1 || port() > 65535) throw new UsageException("Port außerhalb 1–65535.");
+        if (!host().matches("[A-Za-z0-9.:-]+")) throw new UsageException("Invalid host.");
+        if (port() < 1 || port() > 65535) throw new UsageException("Port must be within 1–65535.");
         if (remote() && (!ssl() || !file.getProperty("profile", "").equals("remote")))
             throw new UsageException(
-                    "Remote benötigt eigenes Profil, TLS und explizite Zugangsdaten; keine"
-                            + " Demo-Fallbacks.");
+                    "Remote requires its own profile, TLS and explicit credentials; no"
+                            + " demo fallbacks.");
         if (!remote() && !InetAddress.getByName(host()).isLoopbackAddress())
-            throw new UsageException("Nichtlokaler Host benötigt Remote-Profil.");
+            throw new UsageException("A non-local host requires the remote profile.");
     }
 
     public String value(String key, String fallback) {
@@ -64,7 +64,7 @@ public final class Settings {
         try {
             return Integer.parseInt(value("port", "61616"));
         } catch (NumberFormatException e) {
-            throw new UsageException("Port muss eine ganze Zahl sein.");
+            throw new UsageException("Port must be an integer.");
         }
     }
 
@@ -85,12 +85,12 @@ public final class Settings {
     }
 
     public String name(String scenario, String suffix) {
-        return namespace() + "." + token(scenario, "Szenario") + "." + suffix;
+        return namespace() + "." + token(scenario, "Scenario") + "." + suffix;
     }
 
     public static String token(String s, String label) {
         if (!s.matches("[A-Za-z0-9_-]{1,64}"))
-            throw new UsageException(label + ": nur Buchstaben, Ziffern, _ und - (1–64).");
+            throw new UsageException(label + ": only letters, digits, _ and - (1–64 characters).");
         return s;
     }
 
@@ -98,7 +98,7 @@ public final class Settings {
         if (remote()
                 && (user().isBlank() || password().isBlank() || value("trustStore", "").isBlank()))
             throw new UsageException(
-                    "Remote-Client benötigt individuelle Zugangsdaten und TLS-Truststore.");
+                    "A remote client requires individual credentials and a TLS truststore.");
         Map<String, Object> transport = new HashMap<>();
         transport.put("host", host());
         transport.put("port", port());
