@@ -38,5 +38,6 @@ jobs:
           name: lab-${{ matrix.os }}
           path: |
             distribution/target/failsafe-reports/
+            distribution/target/process-logs/
             distribution/target/artemis-java-jumpstart-runtime.zip
           retention-days: 7

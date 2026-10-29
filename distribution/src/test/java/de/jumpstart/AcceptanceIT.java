@@ -171,7 +171,18 @@ class AcceptanceIT {
         try {
             if (broker != null && broker.process.isAlive()) stopBroker();
         } finally {
-            for (Job j : jobs) j.close();
+            Path logs = Path.of("target/process-logs");
+            Files.createDirectories(logs);
+            for (Job j : jobs) {
+                try {
+                    j.close();
+                } finally {
+                    Files.copy(
+                            j.output,
+                            logs.resolve(j.output.getFileName()),
+                            StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
         }
     }
 
@@ -660,89 +671,94 @@ class AcceptanceIT {
     @Order(15)
     void runtimeArchiveLaunchersAndSafeResetFromSpacePath() throws Exception {
         stopBroker();
-        Path unpack = temporary.resolve("unpacked runtime with spaces");
-        Files.createDirectories(unpack);
-        Path zip = source.resolve("distribution/target/artemis-java-jumpstart-runtime.zip");
-        try (var input = new ZipInputStream(Files.newInputStream(zip))) {
-            for (ZipEntry e; (e = input.getNextEntry()) != null; ) {
-                Path file = unpack.resolve(e.getName()).normalize();
-                assertTrue(file.startsWith(unpack));
-                if (e.isDirectory()) Files.createDirectories(file);
-                else {
-                    Files.createDirectories(file.getParent());
-                    Files.copy(input, file);
+        try {
+            Path unpack = temporary.resolve("unpacked runtime with spaces");
+            Files.createDirectories(unpack);
+            Path zip = source.resolve("distribution/target/artemis-java-jumpstart-runtime.zip");
+            try (var input = new ZipInputStream(Files.newInputStream(zip))) {
+                for (ZipEntry e; (e = input.getNextEntry()) != null; ) {
+                    Path file = unpack.resolve(e.getName()).normalize();
+                    assertTrue(file.startsWith(unpack));
+                    if (e.isDirectory()) Files.createDirectories(file);
+                    else {
+                        Files.createDirectories(file.getParent());
+                        Files.copy(input, file);
+                    }
                 }
             }
+            Path root = unpack.resolve("artemis-java-jumpstart");
+            assertTrue(Files.isRegularFile(root.resolve("lib/broker.jar")));
+            if (!isWindows())
+                try (var files = Files.list(root.resolve("scripts"))) {
+                    files.filter(p -> p.toString().endsWith(".sh"))
+                            .forEach(p -> p.toFile().setExecutable(true));
+                }
+            try (var absent = launch(root, "doctor", "runtime")) {
+                String diagnostic = absent.end(2);
+                assertTrue(diagnostic.contains("Broker-Port nicht erreichbar"), diagnostic);
+            }
+            try (var b = launch(root, "broker", "start")) {
+                b.ready("BROKER_READY");
+                try (var doctor = launch(root, "doctor", "runtime")) {
+                    assertTrue(doctor.end(0).contains("Authentifizierung erfolgreich"));
+                }
+                try (var producer = launch(root, "lab", "s01", "produce", "--count", "2")) {
+                    producer.end(0);
+                }
+                try (var consumer = launch(root, "lab", "s01", "consume", "--count", "2")) {
+                    assertEquals(2, commits(consumer.end(0)).size());
+                }
+                try (var bad = launch(root, "lab", "s01", "consume", "--count", "0")) {
+                    bad.end(2);
+                }
+                try (var stop = launch(root, "broker", "stop")) {
+                    stop.end(0);
+                }
+                b.end(0);
+            }
+            // Simulate a junction on Windows, a symlink elsewhere; reset must refuse without
+            // touching
+            // the target.
+            Path outside = temporary.resolve("preserved");
+            Files.createDirectories(outside);
+            Files.writeString(outside.resolve("keep.txt"), "keep");
+            Path link = root.resolve("runtime/broker/foreign-link");
+            if (isWindows()) {
+                try (var mk =
+                        new Job(
+                                List.of(
+                                        "cmd.exe",
+                                        "/d",
+                                        "/c",
+                                        "mklink",
+                                        "/J",
+                                        link.toString(),
+                                        outside.toString()),
+                                root)) {
+                    mk.end(0);
+                }
+            } else Files.createSymbolicLink(link, outside);
+            try (var refused = launch(root, "broker", "reset", "--confirm")) {
+                assertTrue(refused.end(2).contains("Symlink/Junction"));
+            }
+            assertEquals("keep", Files.readString(outside.resolve("keep.txt")));
+            Files.delete(link);
+            Path marker = root.resolve("runtime/broker/.lab-data");
+            String identity = Files.readString(marker);
+            Files.writeString(marker, "not-owned");
+            try (var refused = launch(root, "broker", "reset", "--confirm")) {
+                assertTrue(refused.end(2).contains("Eigentumsmarker"));
+            }
+            Files.writeString(marker, identity);
+            try (var reset = launch(root, "broker", "reset", "--confirm")) {
+                reset.end(0);
+            }
+            assertFalse(Files.exists(root.resolve("runtime/broker")));
+            assertEquals("keep", Files.readString(outside.resolve("keep.txt")));
+        } finally {
+            // Restore the shared fixture even if an archive launcher fails on one platform.
+            startBroker();
         }
-        Path root = unpack.resolve("artemis-java-jumpstart");
-        assertTrue(Files.isRegularFile(root.resolve("lib/broker.jar")));
-        if (!isWindows())
-            try (var files = Files.list(root.resolve("scripts"))) {
-                files.filter(p -> p.toString().endsWith(".sh"))
-                        .forEach(p -> p.toFile().setExecutable(true));
-            }
-        try (var absent = launch(root, "doctor", "runtime")) {
-            assertTrue(absent.end(2).contains("Broker-Port nicht erreichbar"));
-        }
-        try (var b = launch(root, "broker", "start")) {
-            b.ready("BROKER_READY");
-            try (var doctor = launch(root, "doctor", "runtime")) {
-                assertTrue(doctor.end(0).contains("Authentifizierung erfolgreich"));
-            }
-            try (var producer = launch(root, "lab", "s01", "produce", "--count", "2")) {
-                producer.end(0);
-            }
-            try (var consumer = launch(root, "lab", "s01", "consume", "--count", "2")) {
-                assertEquals(2, commits(consumer.end(0)).size());
-            }
-            try (var bad = launch(root, "lab", "s01", "consume", "--count", "0")) {
-                bad.end(2);
-            }
-            try (var stop = launch(root, "broker", "stop")) {
-                stop.end(0);
-            }
-            b.end(0);
-        }
-        // Simulate a junction on Windows, a symlink elsewhere; reset must refuse without touching
-        // the target.
-        Path outside = temporary.resolve("preserved");
-        Files.createDirectories(outside);
-        Files.writeString(outside.resolve("keep.txt"), "keep");
-        Path link = root.resolve("runtime/broker/foreign-link");
-        if (isWindows()) {
-            try (var mk =
-                    new Job(
-                            List.of(
-                                    "cmd.exe",
-                                    "/d",
-                                    "/c",
-                                    "mklink",
-                                    "/J",
-                                    link.toString(),
-                                    outside.toString()),
-                            root)) {
-                mk.end(0);
-            }
-        } else Files.createSymbolicLink(link, outside);
-        try (var refused = launch(root, "broker", "reset", "--confirm")) {
-            assertTrue(refused.end(2).contains("Symlink/Junction"));
-        }
-        assertEquals("keep", Files.readString(outside.resolve("keep.txt")));
-        Files.delete(link);
-        Path marker = root.resolve("runtime/broker/.lab-data");
-        String identity = Files.readString(marker);
-        Files.writeString(marker, "not-owned");
-        try (var refused = launch(root, "broker", "reset", "--confirm")) {
-            assertTrue(refused.end(2).contains("Eigentumsmarker"));
-        }
-        Files.writeString(marker, identity);
-        try (var reset = launch(root, "broker", "reset", "--confirm")) {
-            reset.end(0);
-        }
-        assertFalse(Files.exists(root.resolve("runtime/broker")));
-        assertEquals("keep", Files.readString(outside.resolve("keep.txt")));
-        // Continue fixture cleanup with the original home and data.
-        startBroker();
     }
 
     @Test
