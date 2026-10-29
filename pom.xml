@@ -24,6 +24,7 @@
     <module>common</module>
     <module>broker</module>
     <module>lab</module>
+    <module>distribution</module>
   </modules>
   <dependencyManagement>
     <dependencies>
