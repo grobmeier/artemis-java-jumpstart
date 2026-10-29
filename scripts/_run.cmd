@@ -3,12 +3,16 @@ setlocal
 set "LAB_ROOT=%~dp0.."
 set "LAB_JAVA=java"
 if defined JAVA_HOME set "LAB_JAVA=%JAVA_HOME%\bin\java.exe"
-"%LAB_JAVA%" -version >nul 2>&1
+rem Capture stderr directly; nested FOR /F command quoting loses the redirection on Windows.
+set "LAB_VERSION_FILE=%TEMP%\artemis-java-version-%RANDOM%-%RANDOM%.txt"
+"%LAB_JAVA%" -version >"%LAB_VERSION_FILE%" 2>&1
 if errorlevel 1 (
+  del /q "%LAB_VERSION_FILE%" >nul 2>&1
   echo Fehler: Java fehlt. JDK 21 bereitstellen und JAVA_HOME oder PATH kontrollieren. 1>&2
   exit /b 2
 )
-for /f "tokens=3" %%v in ('""%LAB_JAVA%" -version 2^>^&1"') do if not defined LAB_VERSION set "LAB_VERSION=%%~v"
+for /f "usebackq tokens=2,3" %%a in ("%LAB_VERSION_FILE%") do if "%%a"=="version" set "LAB_VERSION=%%~b"
+del /q "%LAB_VERSION_FILE%" >nul 2>&1
 for /f "tokens=1 delims=." %%m in ("%LAB_VERSION%") do set "LAB_MAJOR=%%m"
 if not defined LAB_MAJOR (
   echo Fehler: Java-Version nicht erkannt. JDK 21 verwenden. 1>&2
