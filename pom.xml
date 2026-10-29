@@ -22,6 +22,7 @@
   </properties>
   <modules>
     <module>common</module>
+    <module>broker</module>
   </modules>
   <dependencyManagement>
     <dependencies>
