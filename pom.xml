@@ -123,4 +123,16 @@
       </plugins>
     </pluginManagement>
   </build>
+  <profiles>
+    <profile>
+      <id>training</id>
+      <properties>
+        <training.enabled>true</training.enabled>
+      </properties>
+      <modules>
+        <module>exercises</module>
+        <module>solutions</module>
+      </modules>
+    </profile>
+  </profiles>
 </project>
