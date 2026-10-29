@@ -1,0 +1,42 @@
+name: Verify Java lab
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Verify (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Build and verify on Windows
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          call .\mvnw.cmd -B -Ptraining clean verify
+          exit /b %errorlevel%
+      - name: Build and verify on Linux
+        if: runner.os != 'Windows'
+        shell: bash
+        run: ./mvnw -B -Ptraining clean verify
+      - name: Preserve results and runtime package
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lab-${{ matrix.os }}
+          path: |
+            distribution/target/failsafe-reports/
+            distribution/target/artemis-java-jumpstart-runtime.zip
+          retention-days: 7
