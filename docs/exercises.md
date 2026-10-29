@@ -1,59 +1,65 @@
-# Aufgaben für Trainees
+# Trainee exercises
 
-Ihr baut die Auftragsverarbeitung eines kleinen Onlineshops. Zahlungen, Versand und E-Mail sind ausschließlich simuliert. Zuerst lokal arbeiten; `scripts\broker.cmd start` bleibt in Terminal 1 offen. Nach `BROKER_READY` weitere Terminals nutzen. Übungsgerüste separat mit `mvnw.cmd -Ptraining clean verify` bauen. `scripts\exercises.cmd A produce --count 10` ist ein Beispiel für den Einstiegspunkt. Der Startcode ist kompilierbar, meldet aber bis zur Implementierung die offene Übungsstelle. Offene Stellen liegen ausschließlich unter `exercises/src/main/java/de/jumpstart/*Exercise.java`.
+Build an order-processing simulation. Payments, shipping and emails are simulated. Work locally first. Keep `scripts\broker.cmd start` open in Terminal 1; wait for `BROKER_READY`, then use separate terminals from the lab root. Build the editable scaffolds with `mvnw.cmd -Ptraining clean verify`. Unfinished entry points compile but report exit 2 until implemented. Only `exercises/src/main/java/de/jumpstart/*Exercise.java` intentionally contains TODOs.
 
-Die ausführbaren Demos dienen als beobachtbare Referenz, die [Musterlösungen](solutions.md) liegen getrennt. Nutzt pro Aufgabe einen neuen Namespace und gebt ihn bei allen beteiligten Clients identisch an. Die fertigen Demo- und Lösungsziele sind gleich: keine Demo-Reste mit einer neuen Aufgabe vermischen. `--count` am Consumer zählt Zustellungen, inklusive Rollbacks. Bei zwei Workern zunächst `--continuous` nutzen, nach vollständiger ID-Menge stoppen und die Queue prüfen.
+The executable demos provide observable references. [Worked solutions](solutions.md) live in a separate module. Use a new namespace per task and the identical value in all cooperating clients. Demos, exercises and solutions share scenario destinations: do not mix old work with a new run. Consumer `--count` includes rolled-back deliveries. With competing workers, begin with `--continuous`, stop after the combined complete ID set and browse the queue.
 
-## Aufgabe A – Bestellungen abarbeiten
+The pilot uses A, B and the failure branch of D. C, E and F are extensions. First predict in your own notes, run, introduce the controlled change, explain evidence and adapt your code. AI assistance is optional and subject to company policy. Check suggestions against code and logs. Never supply credentials, confidential code or company data to an external tool. Which suggestion did you accept or reject, and what evidence informed that decision?
 
-Ihr implementiert zehn Bestellungen für orders.incoming im eigenen Namespace (S02). Sendet zuerst ohne Worker. Startet anschließend einen, dann für einen frischen Lauf zwei Worker mit kleiner Bearbeitungszeit.
+Commands below are for cmd.exe. On Linux/macOS use `./mvnw` and `./scripts/exercises.sh`, `./scripts/lab.sh`, `./scripts/broker.sh`.
 
-**Zeit:** 35 Minuten. **Voraussetzungen:** Klassen, Schleifen, Exceptions; Konzepte Producer, Consumer und Queue.
 
-**Startcode:** [AExercise.java](../exercises/src/main/java/de/jumpstart/AExercise.java). Die dortige TODO-Stelle mit direkten Jakarta-Messaging-Aufrufen vervollständigen. Konfiguration, JSON und Ausgabe aus common dürfen genutzt werden.
+## Exercise A — Processing orders
 
-**Terminal 3 zuerst:**
+Implement ten orders for orders.incoming (S02). Publish without workers, then repeat with one worker and two workers using a small processing delay.
+
+**Time and prerequisites:** 35 minutes; classes, loops, exceptions; producer, consumer and queue concepts.
+
+**Starting code:** [AExercise.java](../exercises/src/main/java/de/jumpstart/AExercise.java). Complete its TODO with direct Jakarta Messaging calls. You may use common for configuration, JSON and logging.
+
+**Terminal 3 first:**
 
 ```bat
 scripts\exercises.cmd A produce --count 10 --namespace task-a
 ```
 
-**Terminal 2 danach:**
+**Terminal 2 next:**
 
 ```bat
 scripts\exercises.cmd A consume --worker alice --count 10 --namespace task-a
 ```
 
-**Zweiter Lauf, Terminal 2 und 3, je eigener Aufruf:**
+**Second run, Terminal 2 and 3, one command per terminal:**
 
 ```bat
 scripts\exercises.cmd A consume --worker alice --continuous --sleep 150 --namespace task-a2
 scripts\exercises.cmd A consume --worker bob --continuous --sleep 150 --namespace task-a2
 ```
 
-**Terminal 4 nach READY beider:**
+**Terminal 4 after both are READY:**
 
 ```bat
 scripts\exercises.cmd A produce --count 10 --namespace task-a2
 ```
 
-**Erfolgskriterien:** Alle zehn fachlichen IDs sind im fehlerfreien Lauf genau einmal als COMMIT sichtbar; beide Worker beteiligen sich. Am Ende s02 browse im jeweiligen Namespace: visible=0. Die Lastverteilung muss nicht gleich sein.
+**Evidence of success:** All ten business IDs appear once as COMMIT in the controlled failure-free run, both workers participate, and s02 browse shows visible=0. An equal split is not required.
 
-**Hinweis 1:** Legt die Destination mit session.createQueue an. Ein TextMessage enthält JSON, ein Producer sendet persistent. Öffnet je Worker eigene Verbindung und Session.
+**Hint 1:** Use session.createQueue and persistent TextMessage sends. Each worker owns its connection and session.
 
-**Hinweis 2:** Schreibt eine begrenzte receive(timeout)-Schleife, simuliert die Arbeit vor session.commit() und protokolliert mit Messages.log. Nutzt für den zweiten Lauf Dauerbetrieb statt vorgegebener Quote je Worker.
+**Hint 2:** Use bounded receive(timeout), do work before session.commit() and log using Messages.log. For two workers, use continuous mode rather than prescribing a per-worker quota.
 
-**Typische Fehler:** Falscher Namespace, Consumer zählt nur einen Teil und wartet auf eine starre Hälfte, fehlender Commit.
+**Common mistakes:** Wrong namespace, rigid half-batch count, missing commit.
 
-**Reflexionsfragen:** Was passiert ohne Consumer? Warum bekommen zwei Worker nicht beide alle Aufträge? Was ist bei einem Absturz nach Receive möglich?
+**Reflection:** What waits without a consumer? Why do two workers not each get every command? What can happen after receive but before commit?
 
-## Aufgabe B – Zwei unabhängige Interessenten
 
-Publiziert OrderCreated auf ein Topic (S03). Rechnungs- und Versandservice brauchen getrennte aktive Subscriptions. Ein dritter Interessent wird erst später angelegt.
+## Exercise B — Independent interests
 
-**Zeit:** 30 Minuten. **Voraussetzungen:** A; Unterschied Auftrag/Event und Bereitschaft.
+Publish OrderCreated on a topic (S03). Billing and shipping need independent active subscriptions. Create a third interest later.
 
-**Startcode:** [BExercise.java](../exercises/src/main/java/de/jumpstart/BExercise.java). Die dortige TODO-Stelle mit direkten Jakarta-Messaging-Aufrufen vervollständigen. Konfiguration, JSON und Ausgabe aus common dürfen genutzt werden.
+**Time and prerequisites:** 30 minutes; exercise A, command/event distinction and readiness.
+
+**Starting code:** [BExercise.java](../exercises/src/main/java/de/jumpstart/BExercise.java). Complete its TODO with direct Jakarta Messaging calls. You may use common for configuration, JSON and logging.
 
 **Terminal 2:**
 
@@ -67,41 +73,42 @@ scripts\exercises.cmd B subscribe --worker billing --subscription billing --coun
 scripts\exercises.cmd B subscribe --worker shipping --subscription shipping --count 3 --namespace task-b
 ```
 
-**Terminal 4 nach READY beider:**
+**Terminal 4 after both are READY:**
 
 ```bat
 scripts\exercises.cmd B produce --count 3 --namespace task-b
 ```
 
-**Terminal 2 nach Ende:**
+**Terminal 2 after exit:**
 
 ```bat
 scripts\exercises.cmd B subscribe --worker late --subscription late --count 2 --namespace task-b
 ```
 
-**Terminal 4 nach READY von late:**
+**Terminal 4 after late is READY:**
 
 ```bat
 scripts\exercises.cmd B produce --count 2 --namespace task-b
 ```
 
-**Erfolgskriterien:** Beide zuerst aktiven Services erhalten dieselben drei IDs vollständig. Late erhält nur die zwei zukünftigen IDs.
+**Evidence of success:** Both initially active services receive the complete same three-ID set. Late receives only the two future IDs.
 
-**Hinweis 1:** createTopic und createConsumer verwenden; jede Verbindung erzeugt eine eigene nicht dauerhafte Subscription.
+**Hint 1:** Use createTopic and createConsumer. Each connection creates its own non-durable subscription.
 
-**Hinweis 2:** Consumer anlegen, connection.start() ausführen und READY ausgeben, bevor der Producer sendet. Der Subscription-Name im CLI ist hier ein Lernlabel, keine durable Identität.
+**Hint 2:** Create consumers, start connections and print READY before publishing. The CLI subscription name is a learning label here, not a durable identity.
 
-**Typische Fehler:** Publish vor Bereitschaft, zwei Services an derselben Queue, Gleichsetzen von Topic mit gespeicherter Historie.
+**Common mistakes:** Publishing before readiness, sharing one queue, confusing a topic with retained history.
 
-**Reflexionsfragen:** Warum erfüllt eine Queue mit zwei Consumern diese Anforderung nicht? Welche Events fehlen dem spät gestarteten Service?
+**Reflection:** Why does a queue with two consumers fail this requirement? Which events does the late service miss?
 
-## Aufgabe C – Der Versandservice ist offline
 
-Registriert zuerst eine durable shipping-Subscription an S04, trennt sie, sendet drei Events und verbindet sie erneut. Wiederholt den Lauf mit geordnetem Brokerneustart.
+## Exercise C — Shipping is offline
 
-**Zeit:** 25 Minuten. **Voraussetzungen:** B; persistente Events und stabile Identität.
+Register a durable shipping subscription (S04), disconnect, send three events, then reconnect. Repeat across graceful broker restart.
 
-**Startcode:** [CExercise.java](../exercises/src/main/java/de/jumpstart/CExercise.java). Die dortige TODO-Stelle mit direkten Jakarta-Messaging-Aufrufen vervollständigen. Konfiguration, JSON und Ausgabe aus common dürfen genutzt werden.
+**Time and prerequisites:** 25 minutes; exercise B, persistent events and stable identity.
+
+**Starting code:** [CExercise.java](../exercises/src/main/java/de/jumpstart/CExercise.java). Complete its TODO with direct Jakarta Messaging calls. You may use common for configuration, JSON and logging.
 
 **Terminal 2:**
 
@@ -109,47 +116,48 @@ Registriert zuerst eine durable shipping-Subscription an S04, trennt sie, sendet
 scripts\exercises.cmd C register --subscription shipping --namespace task-c
 ```
 
-**Terminal 3 nach Ende von register:**
+**Terminal 3 after exit of register:**
 
 ```bat
 scripts\exercises.cmd C produce --count 3 --namespace task-c
 ```
 
-**Terminal 2 danach:**
+**Terminal 2 next:**
 
 ```bat
 scripts\exercises.cmd C subscribe --subscription shipping --count 3 --namespace task-c
 ```
 
-**Wiederholung: Terminal 3 nach erneutem register und produce:**
+**Repeat: Terminal 3 after register and produce again:**
 
 ```bat
 scripts\broker.cmd stop
 ```
 
-**Terminal 1 nach Brokerende:**
+**Terminal 1 after the broker exits:**
 
 ```bat
 scripts\broker.cmd start
 ```
 
-**Erfolgskriterien:** Jeweils drei wartende IDs kommen an; beim Neustart denselben Datenpfad und persistente Events verwenden. Abschließend erneut denselben subscribe-Aufruf ausführen.
+**Evidence of success:** Three waiting IDs arrive each time. Preserve the same data path and persistent events on restart, then repeat the subscribe command.
 
-**Hinweis 1:** Client-ID vor dem Start setzen; createDurableConsumer mit einem stabilen Subscription-Namen nutzen. register darf den Consumer danach schließen.
+**Hint 1:** Set the client ID before starting the connection. Use createDurableConsumer with a stable name; register may close the consumer afterwards.
 
-**Hinweis 2:** Identität besteht aus Client-ID und Subscription-Name. Verwendet Namespace und Szenario konsistent in beiden; zum Beispiel task-c.s04.client-shipping und task-c.s04.shipping.
+**Hint 2:** Identity combines client ID and subscription name. Use namespace/scenario consistently, for example task-c.s04.client-shipping and task-c.s04.shipping.
 
-**Typische Fehler:** Client-ID nach Verbindungsstart setzen, Namen wechseln, mit zwei aktiven ungeteilten Durable Consumern derselben Identität verbinden.
+**Common mistakes:** Setting client ID after connection start, changing names, two active unshared durable consumers with one identity.
 
-**Reflexionsfragen:** Was ändert ein neuer Name oder eine neue Client-ID? Warum sind persistente Message und durable Subscription verschiedene Eigenschaften?
+**Reflection:** What changes with a new name/client ID? How do persistent messages differ from durable subscriptions?
 
-## Aufgabe D – Fehler und Gift-Nachrichten
 
-Ein Worker scheitert bei order-2, dessen priorityClass im Test invalid ist. Verwendet die transacted Session und insgesamt drei Versuche mit 500 ms Abstand (BrokerRuntime). Gesunde Aufträge bleiben verarbeitbar. Untersucht die DLQ und sendet bewusst eine reparierte Version.
+## Exercise D — Failure and poison messages
 
-**Zeit:** 45 Minuten. **Voraussetzungen:** A–C; Transaktionen, Rollback und Versuchszähler.
+Order-2 has priorityClass=invalid. Roll it back using a transacted session. BrokerRuntime allows three total attempts at 500 ms intervals. Inspect the DLQ and deliberately send a repaired version.
 
-**Startcode:** [DExercise.java](../exercises/src/main/java/de/jumpstart/DExercise.java). Die dortige TODO-Stelle mit direkten Jakarta-Messaging-Aufrufen vervollständigen. Konfiguration, JSON und Ausgabe aus common dürfen genutzt werden.
+**Time and prerequisites:** 45 minutes; queue transactions, rollback and delivery counts. The pilot implements the failure branch first; complete replay afterwards if time is short.
+
+**Starting code:** [DExercise.java](../exercises/src/main/java/de/jumpstart/DExercise.java). Complete its TODO with direct Jakarta Messaging calls. You may use common for configuration, JSON and logging.
 
 **Terminal 3:**
 
@@ -163,36 +171,37 @@ scripts\exercises.cmd D produce --count 3 --namespace task-d
 scripts\exercises.cmd D consume --count 5 --namespace task-d
 ```
 
-**Terminal 3 danach:**
+**Terminal 3 next:**
 
 ```bat
 scripts\lab.cmd s06 browse --target dlq --namespace task-d
 scripts\exercises.cmd D replay --count 1 --namespace task-d
 ```
 
-**Terminal 2 danach:**
+**Terminal 2 next:**
 
 ```bat
 scripts\exercises.cmd D consume --count 1 --namespace task-d
 ```
 
-**Erfolgskriterien:** Zwei gesunde COMMITs, drei Versuche für die fehlerhafte ID und anschließend genau ein passender DLQ-Eintrag. Reparierter Replay behält die fachliche ID, bekommt einen neuen technischen Send und lässt sich committen.
+**Evidence of success:** Two healthy COMMITs, three attempts for the invalid ID and one matching DLQ entry. Replay keeps the business ID but creates a new technical send; repaired work commits successfully.
 
-**Hinweis 1:** Bei invalid rollback statt commit. count zählt Zustellungen: drei ursprüngliche Nachrichten plus zwei zusätzliche Retries ergeben fünf Receives.
+**Hint 1:** Rollback invalid work instead of committing. count counts deliveries: three original messages plus two retries means five receives.
 
-**Hinweis 2:** DLQ ist DLQ::DLQ.<namespace>.s06.orders.incoming. Read und reparierter Send lassen sich in derselben JMS-Transaktion verbinden. Payload UND Property korrigieren.
+**Hint 2:** Local DLQ FQQN: DLQ::DLQ.<namespace>.s06.orders.incoming. Receive and repaired send can share one JMS transaction. Repair payload AND property.
 
-**Typische Fehler:** Nach Rollback trotzdem committen, drei Retries statt drei Gesamtversuche konfigurieren, Fehler durch endloses Wiederholen verdecken.
+**Common mistakes:** Committing after rollback, treating three attempts as three retries, hiding invalid data in endless retries.
 
-**Reflexionsfragen:** Was unterscheidet technischen Fehler, fachlich ungültigen Auftrag und endlose Retry-Schleife? Warum muss Replay bewusst geschehen?
+**Reflection:** How do transient faults and invalid business data differ? Why should replay be deliberate?
 
-## Aufgabe E – Dieselbe Bestellung zweimal
 
-Erzeugt dieselbe fachliche ID zweimal (S09). Speichert den lokalen Buchungseffekt und die Idempotenz-ID atomar in H2. Löst gezielt den Crash nach DB-Commit und vor JMS-Commit aus. Startet den Worker neu.
+## Exercise E — The same order twice
 
-**Zeit:** 60 Minuten, Vertiefung nach D. **Voraussetzungen:** D; JDBC-Transaktion und Unique Constraint. H2-Dependency im exercises-Modul ergänzen, Version aus dem Parent-POM übernehmen.
+Send one business ID twice (S09). Store ID and local ledger effect atomically in H2. Crash after DB commit but before JMS commit, then restart.
 
-**Startcode:** [EExercise.java](../exercises/src/main/java/de/jumpstart/EExercise.java). Die dortige TODO-Stelle mit direkten Jakarta-Messaging-Aufrufen vervollständigen. Konfiguration, JSON und Ausgabe aus common dürfen genutzt werden.
+**Time and prerequisites:** 60 minutes, extension; JDBC transactions and unique constraints. Add H2 to exercises/pom.xml using the parent-managed version.
+
+**Starting code:** [EExercise.java](../exercises/src/main/java/de/jumpstart/EExercise.java). Complete its TODO with direct Jakarta Messaging calls. You may use common for configuration, JSON and logging.
 
 **Terminal 3:**
 
@@ -206,29 +215,30 @@ scripts\exercises.cmd E produce --count 2 --id same-order --namespace task-e
 scripts\exercises.cmd E consume --count 1 --crash --namespace task-e
 ```
 
-**Terminal 2 nach Exitcode 17:**
+**Terminal 2 after exit code 17:**
 
 ```bat
 scripts\exercises.cmd E consume --count 2 --namespace task-e --timeout 10000
 ```
 
-**Erfolgskriterien:** Mehrere technische Zustellungen, aber genau ein lokaler Ledger-Eintrag; beide Nachrichten haben dieselbe Fach-ID und verschiedene JMSMessageIDs. Nach Neustart den JMS-Commit für bereits bekannte IDs nachholen.
+**Evidence of success:** Multiple technical deliveries, exactly one local ledger row. The two sends share the business ID and have different JMSMessageIDs. Complete JMS commit for already-known IDs after restart.
 
-**Hinweis 1:** Ein INSERT in eine Tabelle mit business_id als Primärschlüssel enthält zugleich order_id und amount_cents als simulierten Effekt. DB-Autocommit ausschalten.
+**Hint 1:** Use one INSERT containing business_id primary key, order_id and amount_cents as the simulated effect. Disable DB autocommit.
 
-**Hinweis 2:** JDBC-URL mit WRITE_DELAY=0 und DB-Commit vor dem Crash. Unique-Verletzung SQLState 23505 behandeln und DB-Rollback ausführen. Erst danach JMS committen. Andere SQL-Fehler nicht als Duplikat verschlucken.
+**Hint 2:** Use WRITE_DELAY=0 and DB commit before the crash. Handle unique violation SQLState 23505 with DB rollback, then commit JMS. Do not swallow other SQL errors as duplicates.
 
-**Typische Fehler:** ID und Effekt separat committen, nur ein Java-Set verwenden, nach Runtime.halt ungeflushte H2-Schreibpuffer verlieren.
+**Common mistakes:** Separate ID/effect commits, an in-memory Set, losing buffered H2 writes on Runtime.halt.
 
-**Reflexionsfragen:** Warum überlebt ein Java-Set keinen Neustart? Wo liegt die Lücke bei zwei nicht atomaren DB-Operationen? Warum folgt daraus keine Sicherheit für echte E-Mails oder Zahlungen?
+**Reflection:** Why does a Set not survive restart? Where is the gap between non-atomic DB operations? Why does this not protect real payments/emails automatically?
 
-## Aufgabe F – Nur relevante Ereignisse
 
-Publiziert sechs Events auf S07. Odd Orders sind EU, gerade Orders US; jede dritte ist OrderCancelled, die übrigen OrderCreated. Sagt die IDs beider Subscriber vor dem Start voraus.
+## Exercise F — Only relevant events
 
-**Zeit:** 30 Minuten. **Voraussetzungen:** B; Message-Properties und Selektoren.
+Publish six events on S07. Odd orders are EU, even orders US; every third event is OrderCancelled, others OrderCreated. Predict both subscriber ID sets first.
 
-**Startcode:** [FExercise.java](../exercises/src/main/java/de/jumpstart/FExercise.java). Die dortige TODO-Stelle mit direkten Jakarta-Messaging-Aufrufen vervollständigen. Konfiguration, JSON und Ausgabe aus common dürfen genutzt werden.
+**Time and prerequisites:** 30 minutes; exercise B, message properties and selectors.
+
+**Starting code:** [FExercise.java](../exercises/src/main/java/de/jumpstart/FExercise.java). Complete its TODO with direct Jakarta Messaging calls. You may use common for configuration, JSON and logging.
 
 **Terminal 2:**
 
@@ -242,18 +252,18 @@ scripts\exercises.cmd F subscribe --worker eu --selector "region = 'EU'" --count
 scripts\exercises.cmd F subscribe --worker cancellations --selector "eventType = 'OrderCancelled'" --count 2 --namespace task-f
 ```
 
-**Terminal 4 nach READY beider:**
+**Terminal 4 after both are READY:**
 
 ```bat
 scripts\exercises.cmd F produce --count 6 --namespace task-f
 ```
 
-**Erfolgskriterien:** EU erhält fachliche IDs der Orders 1,3,5; Stornierungen die der Orders 3,6. Vergleicht Mengen, nicht die Logreihenfolge.
+**Evidence of success:** EU receives orders 1,3,5; cancellations receive 3,6. Compare sets, not cross-process log order.
 
-**Hinweis 1:** setStringProperty auf der Message setzen; JSON und Properties müssen dieselben fachlichen Werte ausdrücken.
+**Hint 1:** Set message properties with setStringProperty. JSON and properties must express the same business values.
 
-**Hinweis 2:** createConsumer(topic, selector) verwenden. Selektorwerte werden als Zeichenketten in einfachen Anführungszeichen geschrieben; der gesamte Ausdruck steht im cmd-Aufruf in doppelten Anführungszeichen.
+**Hint 2:** Use createConsumer(topic, selector). Selector strings use single quotes; surround the entire expression with double quotes in cmd.exe.
 
-**Typische Fehler:** Filter liest nur JSON, falsche Groß-/Kleinschreibung oder quotes, Publish vor READY.
+**Common mistakes:** Filtering only JSON, wrong case/quotes, publishing before READY.
 
-**Reflexionsfragen:** Was ist der Unterschied zwischen Payload und Properties? Warum kann dieselbe Order bei beiden Subscriptions erscheinen?
+**Reflection:** What is the difference between payload and properties? Why can one order appear in both independent subscriptions?

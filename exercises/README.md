@@ -1,3 +1,3 @@
-# Übungsgerüste
+# Editable exercises
 
-Mit `mvnw.cmd -Ptraining clean verify` separat aktivieren. Die Stellen `TODO(A)` bis `TODO(F)` sind absichtlich offen und kompilierbar. `scripts\exercises.cmd A produce --count 10` startet den jeweiligen Einstiegspunkt. Voraussetzung ist ein laufender Broker; offene Übungsstellen melden sich mit Exitcode 2. Aufgaben und Hilfen: [docs/exercises.md](../docs/exercises.md). Lösungen befinden sich ausschließlich im separaten solutions-Modul.
+Build with `mvnw.cmd -Ptraining clean verify`. The compilable `TODO(A)` through `TODO(F)` scaffolds intentionally need implementation. `scripts\exercises.cmd A produce --count 10` starts exercise A. Start the broker separately first. Unfinished entry points exit with code 2. See [tasks and staged hints](../docs/exercises.md). Worked solutions live in the separate `solutions` module and remain in this private repository.

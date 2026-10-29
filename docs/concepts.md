@@ -1,108 +1,106 @@
-# Messaging Schritt für Schritt
+# Messaging step by step
 
-## Warum asynchron?
+## Why asynchronous work?
 
-Ein Onlineshop nimmt eine Bestellung an. Rechnung und Versand können später folgen, obwohl der Versandservice gerade offline ist. Eine Nachricht bleibt beim Broker gespeichert. Lastspitzen müssen dadurch nicht sofort von jedem Service verarbeitet werden. Der Kunde sieht zunächst „angenommen“, später „versandbereit“: Datenstände gleichen sich zeitversetzt an (**Eventual Consistency**). Das bringt zusätzliche Zustände, Wartezeiten, Fehlerbehandlung und mögliche Duplikate mit sich. Experiment: S01 ohne Worker senden, dann den Worker starten.
+A shop accepts an order while shipping is offline. A broker can retain the command so a worker processes it later. Services do not all have to absorb a traffic peak at once. A customer first sees “accepted”, later “ready to ship”: views converge over time (**eventual consistency**). This adds waiting states, failure handling and possible duplicates. Try S01 without a worker, then start one.
 
-| Begriff | Beispiel | Beobachtung |
+| Term | Example | Evidence |
 |---|---|---|
-| Producer | Bestelleingang | S01 `produce` erzeugt JSON-Nachrichten |
-| Broker | separater Artemis-Prozess | bleibt aktiv, wenn Producer beendet ist |
-| Consumer | Versandworker | meldet RECEIVE und COMMIT |
-| Nachricht | OrderCommand | fachliche ID plus Header und Properties |
-| Queue | orders.incoming | zwei Worker teilen die Arbeit (S02) |
-| Topic | orders.events | unabhängige Subscriptions bekommen Kopien (S03) |
-| Subscription | shipping | hält die Sicht eines Interessenten auf ein Topic (S04) |
+| Producer | Order intake | S01 produce sends JSON messages |
+| Broker | Separate Artemis JVM | Remains active after producer exits |
+| Consumer | Shipping worker | Logs RECEIVE and COMMIT |
+| Message | OrderCommand | Business ID, payload, headers and properties |
+| Queue | orders.incoming | Workers share work in S02 |
+| Topic | orders.events | Independent subscriptions receive copies in S03 |
+| Subscription | shipping | One interest in a topic, optionally durable in S04 |
 
 ```mermaid
 flowchart LR
- P[Bestelleingang] --> Q[Queue]
+ P[Order intake] --> Q[One queue]
  Q --> A[Worker Alice]
  Q --> B[Worker Bob]
 ```
 
 ```mermaid
 flowchart LR
- P[Events] --> T[Topic / Multicast-Address]
- T --> R[Subscription Rechnung]
- T --> V[Subscription Versand]
+ P[Events] --> T[Topic / multicast address]
+ T --> B[Billing subscription]
+ T --> S[Shipping subscription]
 ```
 
-## Queue, Topic und Artemis-Speicher
+## Addresses, queues and subscriptions
 
-Eine **Address** ist der Routing-Eingang in Artemis. Eine **Queue** speichert Zustellungen. Das Topic wird auf eine Multicast-Address abgebildet; die Subscriptions besitzen dahinter Artemis-Queues. Topic und Artemis-Queue schließen einander deshalb nicht aus.
+An Artemis **address** is the routing entry point. A **queue** stores deliveries. A Jakarta topic maps to a multicast address with a queue behind each subscription. These terms describe different layers.
 
 | Jakarta Messaging | Artemis | Experiment |
 |---|---|---|
-| Queue | Anycast-Address mit Queue; eine Nachricht geht an eine passende Queue | S02, zwei Worker |
-| Topic | Multicast-Address mit Queue pro Subscription | S03, beide Services |
-| Durable Subscription | dauerhafte Subscription-Queue an Multicast-Address | S04, offline senden |
-| Shared Durable Subscription | mehrere Consumer an derselben dauerhaften Subscription-Queue | S14, geteilte Kopie plus Audit-Kopie |
+| Queue | Anycast address with queue | S02, two workers share |
+| Topic | Multicast address, queue per subscription | S03, two complete copies |
+| Durable subscription | Subscription queue survives disconnection | S04, offline events |
+| Shared durable subscription | Multiple consumers share one durable subscription queue | S14, shared team and independent audit |
 
-Eine Queue mit zwei Consumern liefert im fehlerfreien kontrollierten Lauf jeden Auftrag an einen von ihnen. Zwei **separate** Topic-Subscriptions erhalten jeweils eine Kopie. Innerhalb einer **Shared** Subscription teilen Worker wiederum die Arbeit. Fairness bedeutet keine exakte Hälfte oder strikte Abwechslung.
+In a controlled failure-free run, workers on one queue share each command. Independent topic subscriptions each receive their own copy. Workers inside one shared subscription share its copy. Neither exact halves nor strict alternation are guaranteed.
 
-## API, Bibliothek und Protokoll
+## API, library and protocol
 
-**Jakarta Messaging** ist die Java-API, früher **Java Message Service (JMS)**. Header wie `JMSMessageID` behalten historische Namen. Dieses Lab verwendet durchgehend `jakarta.jms`; `javax.jms` gehört zur älteren API-Namenswelt. Die Artemis-Jakarta-Clientbibliothek implementiert die API. Auf dem Netz spricht sie hier das Artemis-**CORE-Protokoll** über TCP beziehungsweise TLS. Die Java-API ist kein Netzwerkprotokoll. Andere Protokolle sind mögliche nächste Schritte, kein zusätzlicher Pflichtclient im Lab.
+**Jakarta Messaging** is the Java API, formerly **Java Message Service (JMS)**. Header names such as `JMSMessageID` retain that history. This lab uses `jakarta.jms` throughout; `javax.jms` belongs to the earlier API namespace. The Artemis Jakarta client implements the API. Here it communicates using the Artemis **CORE protocol** over TCP or TLS. The Java API is not a network protocol.
 
-## Payload und Properties
+## Payload, properties and identity
 
-[OrderCommand](../common/src/main/java/de/jumpstart/OrderCommand.java) und [OrderCreated](../common/src/main/java/de/jumpstart/OrderCreated.java) enthalten `schemaVersion`, eine stabile fachliche ID, `orderId`, `amountCents` und einen ISO-Zeitstempel. [Messages.create](../common/src/main/java/de/jumpstart/Messages.java) erzeugt TextMessage-JSON und passende Properties zusammen:
+[OrderCommand](../common/src/main/java/de/jumpstart/OrderCommand.java) and [OrderCreated](../common/src/main/java/de/jumpstart/OrderCreated.java) contain `schemaVersion`, a stable business ID, `orderId`, `amountCents` and an ISO timestamp. [Messages.create](../common/src/main/java/de/jumpstart/Messages.java) creates JSON TextMessage bodies and consistent `eventType`, `region` and `priorityClass` properties.
 
-```java
-m.setStringProperty("eventType",type);
-m.setStringProperty("region",region);
-m.setStringProperty("priorityClass",priority);
-```
+A selector such as `region = 'EU'` uses the messaging selector language over properties/headers. It is neither a Java predicate nor an automatic JSON query. S07 sends six events: orders 1,3,5 are EU; 3,6 are cancellations. Do not use ObjectMessage or Java object serialization.
 
-Die Properties lassen sich mit `region = 'EU'` filtern. Ein Selektor verwendet die Messaging-Selektorsprache mit Properties/Headern, keine Java-Prädikate und keine automatische Abfrage von JSON-Feldern. S07 zeigt vorhersagbare Mengen: bei sechs Events sind 1, 3, 5 EU; 3 und 6 sind Stornierungen. Eine JMSMessageID identifiziert einen technischen Send-Vorgang; eine fachliche ID bleibt beim Replay oder erneuten Senden erhalten. S09 zeigt verschiedene JMSMessageIDs mit derselben fachlichen ID. Keine ObjectMessages oder Java-Objektserialisierung verwenden.
+`JMSMessageID` identifies a technical send; the business ID remains stable across replay or deliberate resend. S09 demonstrates distinct technical IDs with one business ID. `priorityClass` is a business property here, not JMS priority. Technical priority would not guarantee fairness or preempt work already delivered.
 
-## Acknowledgement, Transaktion und Geschäftsverarbeitung
+## Acknowledgement and business processing
 
-**Receive** bedeutet noch nicht „fachlich erfolgreich“. Bei einer transacted Session bestätigt `commit()` die empfangenen Nachrichten und veröffentlicht die in dieser Session gesendeten Nachrichten atomar gegenüber demselben Broker. `rollback()` nimmt beides zurück. S08 prüft den Eingang und Ausgang. Eine Session gehört einem Worker; Session/JMSContext nicht ungesichert zwischen Threads teilen.
+Receive does not mean business success. In a **transacted session**, `commit()` confirms received messages and publishes messages sent in that session atomically against the same broker; `rollback()` reverses both. See S08. Each worker owns its connection/session; do not share a Session or JMSContext unsafely between threads.
 
-- `AUTO_ACKNOWLEDGE`: bei synchronem Empfang nach erfolgreicher Rückkehr aus `receive`, beim Listener nach erfolgreicher Rückkehr aus `onMessage`. Ein späterer Fehler in der Anwendung ist damit nicht automatisch abgesichert.
-- `CLIENT_ACKNOWLEDGE`: `message.acknowledge()` bestätigt **alle bisher in dieser Session konsumierten Nachrichten**, nicht nur das einzelne Objekt. `recover()` ermöglicht Wiederzustellung noch unbestätigter Zustellungen; es ist keine fachliche Kompensation.
-- `SESSION_TRANSACTED`: explizites Commit/Rollback; das ist der Standard der Lab-Worker. Der Acknowledgement-Mode-Parameter ist für transacted Sessions ohne eigene Wirkung.
+- `AUTO_ACKNOWLEDGE`: synchronous delivery is acknowledged after receive returns successfully; a listener delivery after onMessage returns successfully. Later application failure is not automatically protected.
+- `CLIENT_ACKNOWLEDGE`: message.acknowledge() confirms **all messages consumed so far in that session**, not just that object. recover() permits redelivery of unacknowledged deliveries, not business compensation.
+- `SESSION_TRANSACTED`: explicit commit/rollback, the lab worker default. The acknowledgement-mode parameter has no separate effect on a transacted session.
 
-S05 rollt eine Zustellung zurück oder beendet den Client vor dem Commit. Danach sind `JMSRedelivered` und, sofern verfügbar, `JMSXDeliveryCount` sichtbar. Ein fehlender Zähler wird als „unbekannt“ ausgegeben, niemals erfunden. **At-least-once** bedeutet mögliche Wiederzustellung; ein einzelner zuständiger Consumer je Zustellung garantiert keinen einmaligen Geschäftseffekt. ACK und fachlicher Erfolg sind unterschiedliche Entscheidungen.
+S05 rolls back or crashes before JMS commit. Compare the same business ID, `JMSRedelivered` and available `JMSXDeliveryCount`. An unavailable count prints `unknown`; it is never invented. At-least-once delivery permits redelivery. One responsible consumer per delivery does not imply a once-only business effect.
 
-## Drei verschiedene Arten von Dauerhaftigkeit
+## Three kinds of durability
 
-| Eigenschaft | Bedeutung | Experiment |
+| Property | Meaning | Experiment |
 |---|---|---|
-| persistente Message | Broker soll bestätigten Send dauerhaft speichern | S15 über Neustart |
-| dauerhafte Queue | Queue existiert auch ohne Consumer und nach Neustart | S01/S15 |
-| durable Subscription | Interessent bleibt registriert, während er offline ist | S04 |
+| Persistent message | Confirmed send should be stored durably | S15 restart |
+| Durable queue | Queue survives absent consumers and restart | S01/S15 |
+| Durable subscription | Registered interest remains while offline | S04 |
 
-Ein erstmals angelegter Subscriber kann keine beliebige Vergangenheit zurückholen. Erst registrieren, dann offline senden. Für das Neustartexperiment zusätzlich persistente Events und persistente Brokerkonfiguration verwenden. Das NIO-Journal ist explizit eingeschaltet; das Lab behauptet keinen umfassenden Stromausfallsicherheitstest.
+A newly created subscription cannot recover arbitrary history. Register first, then send while offline. Restart experiments also use persistent events and the explicitly persistent NIO journal. This lab does not establish comprehensive power-loss resilience.
 
-## Fehler, Retry und Expiry
+## Retry, dead letters and expiry
 
-Ein **Retry** ist ein weiterer Versuch nach einem fehlgeschlagenen Zustellversuch. S06 erlaubt **drei Gesamtversuche = zwei zusätzliche Retries**, mit jeweils 500 ms Redelivery-Delay. Ein wachsender Backoff kann Systeme bei längeren Störungen entlasten; im Lab bleibt der Faktor bewusst 1. Ein transienter technischer Fehler kann nach Retry verschwinden. Eine fachlich ungültige Nachricht wird durch bloßes Warten nicht gültig. Nach dem Limit landet sie in einer expliziten **Dead Letter Queue (DLQ)**. Beim bewussten Replay wird im Beispiel die ungültige `priorityClass` in Payload und Properties repariert, die fachliche ID bleibt gleich. Nach Fehleranalyse keine endlose Retry-Schleife bauen.
+A retry is another attempt after failed delivery. S06 permits **three total attempts = two additional retries**, with a 500 ms redelivery delay and multiplier 1. Increasing backoff can reduce pressure during longer outages. A transient technical fault may disappear; invalid business data does not become valid by waiting.
 
-**Expiry** ist davon unabhängig: S11 lässt die Lebensdauer (TTL) einer Nachricht ohne Consumer ablaufen. Sie geht zur Expiry-Queue, ohne dass der Worker dreimal scheitern musste. Fehler-/Expiry-Queues werden pro Quelladdress angelegt. Sie werden über FQQN (`Address::Queue`) angesprochen. S12 benutzt `MessageProducer.setDeliveryDelay()` für die erste Verfügbarkeit; das ist etwas anderes als ein Redelivery-Delay nach einem Fehler.
+After the attempt limit, the message enters a **dead letter queue (DLQ)** for investigation. Deliberate replay repairs `priorityClass` in both payload and properties, preserves the business ID and creates a new technical send. Do not hide invalid work in an infinite retry loop.
 
-## Idempotenz und atomarer lokaler Effekt
+Expiry is independent: S11 lets TTL expire without a worker failure. Per-source error/expiry queues are accessed using a fully qualified queue name (FQQN), `Address::Queue`. S12 uses MessageProducer.setDeliveryDelay for first availability, distinct from redelivery delay after failure.
 
-S09 speichert eine fachliche ID als Primärschlüssel **in derselben H2-Transaktion wie den lokalen Ledger-Effekt**. [Ledger.apply](../lab/src/main/java/de/jumpstart/Ledger.java) führt einen INSERT und DB-Commit aus. `WRITE_DELAY=0` erzwingt unmittelbares Schreiben vor dem absichtlichen harten Prozessabbruch. Der INSERT enthält selbst den simulierten Buchungseffekt; es gibt kein getrenntes, möglicherweise vergessendes „bereits gesehen“-Set. Ein doppelter Schlüssel wird nach Rollback als Duplikat erkannt.
+## Idempotency and one local atomic effect
 
-Crash nach DB-Commit und vor JMS-Commit: nach dem Neustart wird erneut zugestellt, die DB erkennt die ID, der Worker holt den JMS-Commit nach. Ein Java-Set verliert seinen Inhalt beim Neustart. Zwei separate DB-Operationen ohne gemeinsame Transaktion lassen eine Crashlücke. H2 läuft ausschließlich eingebettet für diese Vertiefung; die anderen Übungen rufen es nicht auf.
+S09 uses a business ID primary key **in the same H2 transaction as the local ledger effect**. [Ledger.apply](../lab/src/main/java/de/jumpstart/Ledger.java) inserts the ID, order and amount in one row, then commits. `WRITE_DELAY=0` writes before the deliberate hard crash. A unique-key violation is handled specifically after DB rollback; other SQL errors are not silently treated as duplicates.
 
-Diese Sicherheit gilt für den **lokalen DB-Effekt**. Eine echte Zahlung oder E-Mail wird dadurch nicht automatisch idempotent. JMS- und Datenbanktransaktion sind getrennt; es wird kein XA und keine verteilte Transaktion behauptet. **Inbox** und **Outbox** sind nächste Schritte: fachliche Änderungen und Verarbeitungseingang beziehungsweise ausgehender Sendeauftrag werden zusammen in einer DB gespeichert; ein separater Dispatcher verarbeitet die Outbox. Auch dabei brauchen Empfänger Duplikatbehandlung.
+After DB commit but before JMS commit, a crash causes redelivery. Recovery recognizes the ID and completes JMS commit without repeating the local effect. An in-memory Set loses its state on restart. Separate ID/effect commits leave a crash gap. H2 is embedded only for this extension.
 
-## Reihenfolge, Gruppen, Last und Priorität
+This protects the **local DB effect**, not an external payment or email automatically. JMS and DB transactions remain separate; no XA/distributed transaction or end-to-end exactly-once guarantee is claimed. Inbox/outbox patterns store business changes together with an incoming record or outgoing send request in one DB transaction; a dispatcher sends outbox work. Receivers still need duplicate handling.
 
-Parallele Consumer können verschieden schnell abschließen. Logreihenfolge zwischen JVMs ist kein verlässliches globales Zeitmaß. S13 setzt `JMSXGroupID = orderId`; im kontrollierten Lauf bleiben die Events einer Order bei demselben Worker und erscheinen in Sendereihenfolge. Absturz, neue Gruppenzuordnung und ungesicherte Parallelverarbeitung begrenzen diese Aussage. Globale Reihenfolge über alle Orders folgt daraus nicht.
+## Order, groups and bounded load
 
-`priorityClass` ist hier eine fachliche Property, keine Anweisung zur JMS-Priorität. Technische Priorität könnte Auswahl beeinflussen, garantiert aber weder Fairness noch einen vollständigen Vorrang bei bereits ausgelieferten Nachrichten. S16 erzeugt höchstens 1000 kleine Aufträge pro Produce-Aufruf und macht den Rückstau mit einem langsamen Consumer sichtbar. Paging ab 1 MiB pro Address, 256-KiB-Seiten, global 64 MiB und synchrones Senden begrenzen den Trainingsbetrieb; Plattenplatz bleibt endlich. `consumerWindowSize=0` fordert Nachrichten bedarfsgesteuert an. Größere Fenster/Prefetch können Arbeit bereits vorab einem Consumer zuweisen und die beobachtete Verteilung verändern.
+Parallel consumers can finish at different speeds; cross-JVM log order is not a global clock. S13 uses `JMSXGroupID = orderId`: in the controlled run one worker sees sequence 1,2,3 per order. Crashes, reassignment and unsafe application parallelism limit that observation. It is not global order across all orders.
 
-## Request/Reply
+S16 produces at most 1000 small orders per invocation. Paging starts at 1 MiB/address with 256 KiB pages and a 64 MiB global limit; disk space is still finite. Sends are persistent, synchronous and time-bounded; producer credit window is -1 to avoid unbounded credit waits. `consumerWindowSize=0` requests work on demand. Prefetch can reserve work in advance and change distribution.
 
-S10 setzt `JMSReplyTo` auf eine temporäre Queue. Der Antwortdienst setzt `JMSCorrelationID` auf die `JMSMessageID` des Requests. Nach Empfang prüft der Aufrufer diese Zuordnung und die Frist. Die Reply-Queue lebt nur mit der erzeugenden Verbindung und wird explizit gelöscht. Ohne Antwortdienst endet der Aufruf mit Timeout; der bereits bestätigte Request kann noch in der Eingangsqueue liegen. Spätere Antworten haben dann kein lebendes Antwortziel mehr. [Replies](../common/src/main/java/de/jumpstart/Replies.java) nutzt wenige ausdrücklich benannte Artemis-Aufrufe, damit auch temporäre Adressen im autorisierten Namespace liegen; die eigentlichen Send/Receive-Aufrufe bleiben Jakarta Messaging.
+## Request/reply
 
-## Einordnung anderer Systeme
+S10 sets JMSReplyTo to a temporary queue. The responder sets JMSCorrelationID to the request JMSMessageID; the caller checks correlation and timeout. The queue lives with its creating connection and is explicitly deleted. Without a responder the caller times out; a committed request can remain after its reply target disappears. [Replies](../common/src/main/java/de/jumpstart/Replies.java) uses a few explicit Artemis calls to keep temporary addresses within the authorized namespace; send/receive still use Jakarta Messaging.
 
-Auf Konzeptebene: SQS dient der gepufferten Arbeitsverteilung; SNS dient der Verteilung an mehrere abonnierte Ziele. Ein SNS-Topic mit mehreren SQS-Queues kann gepufferten Fan-out ausdrücken. Google Cloud Pub/Sub verbindet Topics mit unabhängig konsumierenden Subscriptions. Artemis bietet diese Queue-/Subscription-Konzepte als selbst betriebener Broker mit mehreren Protokollen. Daraus folgt weder API-Gleichheit noch eine direkte Entsprechung von SQS Visibility Timeout und jeder JMS-Acknowledgement-Art. Dieses Lab macht bewusst keine versionsabhängigen Cloud-Detailaussagen. Vergleicht nach S03 nur: Wo entsteht die Kopie, wo wartet die Arbeit, und wer bestätigt sie?
+## Relating the concepts
 
-Weiterführende Experimente: Reconnect/Failover mit gezielten Unterbrechungen, Inbox/Outbox mit echtem Geschäftsmodell und andere Protokolle. Cluster, HA, XA und produktive Zahlungs-/Outbox-Infrastruktur gehören nicht zum Umfang.
+At a conceptual level, SQS buffers shared work; SNS distributes to subscribed destinations, and SNS with multiple SQS queues can provide buffered fan-out. Google Cloud Pub/Sub has topics with independent subscriptions. Artemis provides queue/subscription concepts as a self-operated broker with multiple protocols. This is not API equivalence or a direct mapping of SQS visibility timeout to every JMS acknowledgement mode. Compare: where is the copy created, where does it wait, and who confirms it?
+
+Reconnect/failover, inbox/outbox and other protocols are possible extensions. Clustering, HA, XA and production payment infrastructure are outside this lab.

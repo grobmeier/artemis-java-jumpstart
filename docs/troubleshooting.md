@@ -1,29 +1,29 @@
-# Fehler finden
+# Troubleshooting
 
-| Beobachtung | Prüfung und Maßnahme |
+| Observation | Check/action |
 |---|---|
-| Java fehlt / falsche Version | `where java` beziehungsweise `command -v java`, `java -version`, JAVA_HOME prüfen; JDK 21 nutzen |
-| Build-Artefakt fehlt | aus dem Quellrepository `mvnw.cmd clean verify`; Übung/Lösung zusätzlich `-Ptraining`; im Laufzeitpaket lib prüfen |
-| Wrapper kann Maven nicht laden | Firmenfreigabe, Bootstrap-Cache, HTTPS und Java-Truststore prüfen; danach Maven settings.xml für Artefakte |
-| Port ist belegt | eigenen Broker im anderen Terminal suchen; bei anderem Dienst alternative Portnummer in allen Prozessen wählen; fremden Prozess nicht blind beenden |
-| doctor meldet Broker-Port nicht erreichbar | Broker separat starten, BROKER_READY abwarten, Host/Port/Firewall prüfen |
-| Authentifizierung fehlgeschlagen | richtige Profildatei, individuellen Nutzer und privates Passwort prüfen; keine Geheimnisse in Logs kopieren |
-| Remote-TLS scheitert | Truststore, Kette, Ablaufdatum, PKCS12-Passwort und SAN passend zum DNS-Namen prüfen; Verifikation eingeschaltet lassen |
-| Consumer TIMEOUT | READY vor Publish? gleicher Namespace/Szenario? korrektes count? Topic-Historie existiert bei neuen nicht dauerhaften Subscriptions nicht |
-| Durable Subscriber bekommt nichts | dieselbe Client-ID UND denselben Subscription-Namen wie bei der Registrierung verwenden; erst registrieren, dann offline senden |
-| Consumer erhält erneut | vorheriger Commit fehlt, Rollback oder Crash; fachliche ID und Redelivery-Felder vergleichen |
-| S06 läuft länger als erwartet | drei Versuche für order-2 plus gesunde Nachrichten; bei count=3 Produce sind fünf Receives zu erwarten |
-| Idempotenz zeigt mehr als einen Eintrag | frischen Namespace verwenden, gleiche fachliche ID für beide Sends, H2-Dateipfad gleich lassen; WRITE_DELAY=0 und atomaren INSERT/Commit prüfen |
-| H2-Datei belegt | S09 hat einen lokalen Worker pro Namespace/Ledger; anderen Worker beenden, keine Live-Datei löschen |
-| Reset verweigert | Broker wirklich beendet? eigener Marker? Daten unter runtime? Symlink/Junction? Schutz prüfen, nicht umgehen |
-| Cleanup verweigert | Queue muss leer und ohne aktive Consumer sein; erst bekannte Restmenge bearbeiten, dann Worker stoppen |
-| wenig gleichmäßige Verteilung | keine feste Quote garantiert; zuerst beide READY, genügend Nachrichten und kleine Bearbeitungszeit; consumerWindowSize beeinflusst Vorabzuordnung |
-| Send schlägt nach Frist fehl | Broker/Plattenplatz prüfen; synchroner Send kann nach Timeout einen unklaren Ausgang haben, beim Wiederholen dieselbe Fach-ID verwenden |
+| Java missing/wrong version | where java or command -v java, java -version, JAVA_HOME; supply JDK 21 |
+| Build artifact missing | mvnw.cmd clean verify from source; add -Ptraining for exercises/solutions; inspect lib in runtime ZIP |
+| Wrapper cannot download Maven | Company access, bootstrap cache, HTTPS/Java truststore; then Maven settings.xml for artifacts |
+| Port occupied | Find your own broker; use the same alternate port in every process if another service owns it; do not blindly kill unrelated processes |
+| Broker port unreachable | Start broker separately, wait BROKER_READY, check host/port/firewall |
+| Authentication fails | Correct profile, individual user and private password; never paste secrets into logs |
+| Remote TLS fails | Check truststore, chain, expiry, PKCS12 password and SAN matching DNS; retain verification |
+| Consumer TIMEOUT | READY before publish? Same namespace/scenario? Correct count? New non-durable subscriptions have no prior history |
+| Durable subscriber empty | Same client ID AND subscription name as registration; register before offline send |
+| Message redelivered | Previous commit missing, rollback or crash; compare business ID and redelivery metadata |
+| S06 takes longer | Three attempts for order-2 plus two healthy deliveries means five receives |
+| More than one ledger row | Fresh namespace, same business ID, same H2 path, WRITE_DELAY=0 and one atomic INSERT/commit |
+| H2 file locked | One local S09 worker per namespace/ledger; stop the other worker, do not delete a live DB |
+| Reset refused | Broker fully stopped? Owned marker? Under runtime? Symlink/junction? Investigate, keep guards |
+| Cleanup refused | Queue must be empty without active consumers; process known remaining work and stop workers |
+| Uneven allocation | No fixed quota: wait both READY, use enough messages and small delay; consumer window affects pre-allocation |
+| Send times out | Check broker/disk. Outcome may be uncertain; preserve business ID when retrying |
 
-`doctor build` prüft JDK/Wrapper, nicht die Erreichbarkeit von Maven-Repositories. `doctor runtime` prüft JARs, TCP und authentifizierte Verbindung, nicht jede Zielberechtigung. Brokerstart ist blockierend und beabsichtigt. `--count` muss positiv sein; für Dauerbetrieb ausdrücklich `--continuous` verwenden. Unerwartete Fehler ergeben einen kompakten deutschen Hinweis statt einer Passwort enthaltenden Provider-Stacktrace-Ausgabe.
+`doctor build` checks JDK/wrapper, not Maven repository connectivity. `doctor runtime` checks JARs, TCP and authenticated connection, not every destination permission. Broker start intentionally blocks. count must be positive; continuous mode is explicit. Unexpected errors produce a concise English diagnostic rather than a provider stack trace that might contain credentials.
 
-Ein begrenzter Consumer endet bei fehlender Sollmenge mit Exitcode 2. Bei einem manuellen Verteilungsversuch kann ein Worker deshalb nicht einfach count=5 garantieren; verwendet Dauerbetrieb und vergleicht die Gesamtmenge. Der absichtliche Crash endet mit 17. Nach einem Netzabbruch darf die Brokererkennung einige Sekunden brauchen; Tests und Übungen verwenden begrenzte Wartefristen.
+Incomplete bounded consumption exits with 2. Do not assume each competing worker receives count=5: use --continuous and reconcile the combined set. Intentional crash exits with 17. Broker detection after disconnection can take seconds; recovery uses a bounded 10000 ms timeout.
 
-Für gezieltes Entfernen einer leeren eigenen Queue: `scripts\lab.cmd s01 cleanup --confirm`. Bei Bedarf `--target outgoing`, `--target dlq` oder `--target expiry`; Namespace/Szenario bleiben begrenzt. Durable Topic-Ressourcen mit `unsubscribe --subscription <NAME>` und derselben Identität entfernen. Kein Cleanup entfernt fremde Bereiche oder ein laufendes Ziel. Ganze lokale Brokerdaten nur nach geordnetem Stopp mit `broker reset --confirm`; H2-Ledger separat.
+Targeted empty queue removal: `scripts\lab.cmd s01 cleanup --confirm`, optionally --target outgoing, dlq or expiry, using the right namespace/scenario. Remove durable topic resources using unsubscribe with the same identity. Reset whole owned local broker data only after graceful stop; H2 is separate.
 
-Bei einem verschobenen **bereits benutzten** Laufzeitpaket passt der Datenmarker absichtlich nicht mehr zum kanonischen Pfad. Für ein neues Training ein frisches ZIP entpacken. Vorhandene Daten nicht durch Ändern des Markers „reparieren“: Trainer entscheidet über kontrollierte Übernahme beziehungsweise gesicherte Neuanlage. Unbenutzte ZIPs sind frei verschiebbar.
+Moving an already-used runtime deliberately invalidates its canonical ownership marker. Extract a fresh ZIP for a new training run. Do not edit the marker to bypass checks; the trainer decides any controlled data migration. Unused packages may be moved freely.
