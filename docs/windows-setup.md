@@ -26,6 +26,8 @@ Alle Terminals öffnen und jeweils ins Repository wechseln. Terminal 1 startet `
 
 Der Broker läuft absichtlich im Vordergrund. Nicht alle Befehle hintereinander ins blockierte Terminal 1 kopieren. Strg+C beendet ihn geordnet. `scripts\broker.cmd stop` fordert aus einem anderen Terminal ebenfalls einen geordneten Stopp an. Vor Neustart oder Reset auf das Prozessende warten.
 
+Die Java-Ausgaben verwenden UTF-8. Die cmd-Launcher stellen dafür die aktuelle Konsolen-Codepage während des Java-Aufrufs um und stellen sie beim normalen Prozessende wieder her. Es werden keine Registry-Einstellungen oder Ausführungsrichtlinien geändert.
+
 ## Vorgebautes ZIP
 
 Das vom Trainer gebaute Laufzeit-ZIP entpacken. Es braucht für die Demos nur das passende JDK, keinen Compilerlauf, Maven, Netzwerkzugriff oder IDE. Die Skripte suchen `lib/*.jar`; im Quellrepository verwenden sie alternativ die `target`-JARs. Aufrufe mit absolutem Skriptpfad funktionieren auch außerhalb des Repositoryverzeichnisses und bei Leerzeichen. Eigene relative `--config`-/Store-/Datenpfade werden zum Lab-Hauptverzeichnis aufgelöst.

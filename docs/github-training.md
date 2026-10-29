@@ -13,6 +13,10 @@ Bei privaten Repositories eines persönlichen GitHub-Kontos erhalten Collaborato
 
 Bis konkrete GitHub-Benutzernamen benannt sind, werden keine Einladungen versendet. Zugangsdaten oder SSH-Schlüssel des Trainers werden nicht weitergegeben.
 
+## Geschützter gemeinsamer Stand
+
+`main` ist geschützt. Trainee-Änderungen werden über Pull Requests übernommen; dafür müssen **Verify (ubuntu-latest)** und **Verify (windows-latest)** erfolgreich sein und der Zweig auf dem aktuellen gemeinsamen Stand basieren. Force-Pushes und das Löschen von `main` sind gesperrt. Der Repository-Eigentümer behält seine administrative Ausnahme für Wartung.
+
 ## Trainee: starten und eigene Änderungen sichern
 
 Nach Annahme der Einladung in cmd.exe:

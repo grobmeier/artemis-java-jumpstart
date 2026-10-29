@@ -64,7 +64,7 @@ Brokerdateien: `runtime/broker/` (NIO-Journal, Bindings, Paging, große Nachrich
 
 ## Prüfung und Hilfe
 
-`doctor build` prüft Build-Voraussetzungen; `doctor runtime` prüft Artefakte, TCP und authentifizierte Brokerverbindung. [Fehlerhilfe](docs/troubleshooting.md), [Versionsquellen](docs/versions.md) und [tatsächlicher Abnahmestatus](docs/acceptance.md) beschreiben Grenzen und Ergebnisse. Ein vorbereiteter CI-Workflow ist kein bestandener Windows-Test.
+`doctor build` prüft Build-Voraussetzungen; `doctor runtime` prüft Artefakte, TCP und authentifizierte Brokerverbindung. [Fehlerhilfe](docs/troubleshooting.md), [Versionsquellen](docs/versions.md) und [tatsächlicher Abnahmestatus](docs/acceptance.md) beschreiben Grenzen und Ergebnisse. Die bestätigten Windows-/Linux-Läufe sind im Abnahmebericht verlinkt.
 
 ## Automatische Prüfung mit GitHub Actions
 
