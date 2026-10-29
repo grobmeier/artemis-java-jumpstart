@@ -2,7 +2,14 @@
 
 ## English Launch Training Labs revision
 
-English CLI, diagnostic strings, exercise comments and matching assertions passed the local Java 21 process/TCP suite on 29 October 2026: **18 tests, zero failures/errors/skips** (103 seconds, macOS, Zulu 21.0.1). Final documentation packaging and Windows/Linux validation of the English pilot revision are recorded below once executed. Do not treat a pending platform as passed.
+English CLI, diagnostic strings, exercise comments and matching assertions passed the local Java 21 process/TCP suite on 29 October 2026: **18 tests, zero failures/errors/skips** (103 seconds, macOS, Zulu 21.0.1). The final local packaging run also passed all 18 tests (102 seconds). The English pilot source/documentation revision **71fc36ed1f39422a058d35598922599e2004cf0e** passed [GitHub Actions run 40945978796](https://github.com/grobmeier/artemis-java-jumpstart/actions/runs/40945978796):
+
+| Platform | Result |
+|---|---|
+| Windows / JDK 21 | 18 tests, zero failures/errors/skips; real cmd launchers and junction checks |
+| Linux / JDK 21 | 18 tests, zero failures/errors/skips; packaged JVM/TCP/TLS scenarios |
+
+Use that exact revision and its successful private artifact for the public pilot's reference. Later documentation-only commits may have their own workflow runs; [Actions](https://github.com/grobmeier/artemis-java-jumpstart/actions) is the current source of truth.
 
 ## Previous verified baseline
 
