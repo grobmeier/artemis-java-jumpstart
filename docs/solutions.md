@@ -1,5 +1,7 @@
 # Separate worked solutions
 
+Before rebuilding, stop every client and your local broker. Windows may lock running JARs. Rebuild with `-Ptraining`, restart the broker, then use a fresh namespace in every cooperating process.
+
 Attempt the task first. The private solutions module uses direct Jakarta Messaging calls without depending on lab. Build with mvnw.cmd -Ptraining clean verify; start the broker separately. scripts\solutions.cmd takes the same arguments as exercises. Use a fresh namespace per task.
 
 | Exercise | Entry | Actions | Scenario |
@@ -15,7 +17,7 @@ Use the separate-terminal sequences in [exercises.md](exercises.md), replacing e
 
 ```bat
 scripts\solutions.cmd A produce --count 10 --namespace solution-a
-scripts\solutions.cmd A consume --count 10 --namespace solution-a
+scripts\solutions.cmd A consume --count 10 --namespace solution-a --timeout 300000
 ```
 
 For topics start subscribers **before** publishing and wait for READY; the queue example is not a topic startup sequence. D needs five deliveries for three produced messages. E produces two equal business IDs, crashes with --count 1 --crash (exit 17), then recovers with --count 2 --timeout 10000. `scripts\lab.cmd ledger show --namespace NAME` reports one effect. WRITE_DELAY=0 persists the DB commit before the hard crash.

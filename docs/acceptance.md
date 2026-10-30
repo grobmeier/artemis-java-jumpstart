@@ -1,5 +1,9 @@
 # Acceptance evidence
 
+## Onboarding regression coverage
+
+The suite now includes fresh-checkout `scripts/doctor build` with no lab JAR, a clear runtime-ZIP diagnostic, and a worker that remains ready while a learner takes more than five seconds to open the producer terminal. JDK 21 CI runs the real cmd.exe launchers on Windows and shell launchers on Linux and macOS. See [current workflow runs](https://github.com/grobmeier/artemis-java-jumpstart/actions) for the exact commit and results; historical runs below cover the previous baseline.
+
 ## English Launch Training Labs revision
 
 English CLI, diagnostic strings, exercise comments and matching assertions passed the local Java 21 process/TCP suite on 29 October 2026: **18 tests, zero failures/errors/skips** (103 seconds, macOS, Zulu 21.0.1). The final local packaging run also passed all 18 tests (102 seconds). The English pilot source/documentation revision **71fc36ed1f39422a058d35598922599e2004cf0e** passed [GitHub Actions run 40945978796](https://github.com/grobmeier/artemis-java-jumpstart/actions/runs/40945978796):

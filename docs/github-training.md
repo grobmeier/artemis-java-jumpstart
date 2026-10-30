@@ -24,6 +24,8 @@ git switch -c feature/YOUR_GITHUB_NAME-exercise-a
 .\mvnw.cmd -Ptraining clean verify
 ```
 
+Set JAVA_HOME to JDK 21 in each terminal first, following [README](../README.md). Run scripts/doctor build before compiling; it must report BUILD_READY. Wait for BUILD SUCCESS before starting scripts. If cloning fails, verify that your own GitHub account accepted the invitation and that your approved Git tool is signed in. Never use the trainer’s account or credentials.
+
 Replace YOUR_GITHUB_NAME. Edit [tasks A–F](exercises.md), for example exercises/src/main/java/de/jumpstart/AExercise.java. Start broker/clients in separate terminals. Tests allow completed trainee scaffolds and still verify independent reference demos/solutions; green CI does not automatically grade every trainee implementation.
 
 Save small completed changes:

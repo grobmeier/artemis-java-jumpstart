@@ -4,7 +4,7 @@ The three-station pilot uses S01/S02, S03 and S05/S06. S04, S07 and S08–S16 ar
 
 First start `scripts\broker.cmd start` in **Terminal 1** and wait for `BROKER_READY`. Keep it open in the foreground throughout the other terminal steps. When a client must be `READY`, wait for that signal before publishing.
 
-Consumer `--count` counts deliveries, including rolled-back attempts. `--timeout` is milliseconds per receive (default 5000); an incomplete bounded run exits with 2. `--continuous` explicitly keeps receiving. Use continuous mode when worker allocation is unknown, stop after the combined complete ID set, then browse. `--sleep` simulates processing time in milliseconds. Producers create fresh business IDs per invocation; `--id` deliberately fixes an ID.
+Consumer `--count` counts deliveries, including rolled-back attempts. `--timeout` is milliseconds per receive (default 5000, maximum 300000 for consumers); an incomplete bounded run exits with 2. `--continuous` explicitly keeps receiving. Use continuous mode when worker allocation is unknown, stop after the combined complete ID set, then browse. `--sleep` simulates processing time in milliseconds. Producers create fresh business IDs per invocation; `--id` deliberately fixes an ID.
 
 Each scenario has separate `<namespace>.sNN.orders.incoming` or `.orders.events` destinations; default namespace is `training`. For repeats choose a fresh `--namespace` in **every** participating command, or drain known work and remove owned durable subscriptions. Empty queues without consumers can be removed using `scripts\lab.cmd sNN cleanup --confirm` with optional `--target incoming|outgoing|dlq|expiry`; replace placeholders before running. Topic cleanup uses the same subscription identity. Full broker reset is only for a stopped, exclusively owned local lab.
 
@@ -25,7 +25,7 @@ scripts\lab.cmd s01 browse
 **Terminal 2 next:**
 
 ```bat
-scripts\lab.cmd s01 consume --worker alice --count 10
+scripts\lab.cmd s01 consume --worker alice --count 10 --timeout 300000
 ```
 
 **Terminal 3 finally:**
@@ -81,13 +81,13 @@ scripts\lab.cmd s02 produce --count 10
 **Terminal 2:**
 
 ```bat
-scripts\lab.cmd s03 subscribe --subscription billing --worker billing --count 3
+scripts\lab.cmd s03 subscribe --subscription billing --worker billing --count 3 --timeout 300000
 ```
 
 **Terminal 3:**
 
 ```bat
-scripts\lab.cmd s03 subscribe --subscription shipping --worker shipping --count 3
+scripts\lab.cmd s03 subscribe --subscription shipping --worker shipping --count 3 --timeout 300000
 ```
 
 **Terminal 4, after both services are READY:**
@@ -99,7 +99,7 @@ scripts\lab.cmd s03 produce --count 3
 **Terminal 2, after the first run ends:**
 
 ```bat
-scripts\lab.cmd s03 subscribe --subscription late --worker late --count 2
+scripts\lab.cmd s03 subscribe --subscription late --worker late --count 2 --timeout 300000
 ```
 
 **Terminal 4, after late is READY:**
@@ -136,7 +136,7 @@ scripts\lab.cmd s04 produce --count 3
 **Terminal 2 next:**
 
 ```bat
-scripts\lab.cmd s04 subscribe --subscription shipping --count 3
+scripts\lab.cmd s04 subscribe --subscription shipping --count 3 --timeout 300000
 ```
 
 **Terminal 2, second run:**
@@ -161,7 +161,7 @@ scripts\broker.cmd start
 **Terminal 2, after BROKER_READY:**
 
 ```bat
-scripts\lab.cmd s04 subscribe --subscription shipping --count 3
+scripts\lab.cmd s04 subscribe --subscription shipping --count 3 --timeout 300000
 ```
 
 **Expected evidence:** Three offline events arrive each time, including after graceful restart. Keep client ID training.s04.client-shipping and subscription training.s04.shipping unchanged.
@@ -186,7 +186,7 @@ scripts\lab.cmd s05 produce --count 1 --id ack-demo
 **Terminal 2:**
 
 ```bat
-scripts\lab.cmd s05 consume --count 1 --rollback
+scripts\lab.cmd s05 consume --count 1 --rollback --timeout 300000
 ```
 
 **Terminal 2 next:**
@@ -217,7 +217,7 @@ scripts\lab.cmd s06 produce --count 3
 **Terminal 2:**
 
 ```bat
-scripts\lab.cmd s06 consume --count 5
+scripts\lab.cmd s06 consume --count 5 --timeout 300000
 ```
 
 **Terminal 3 next:**
@@ -230,7 +230,7 @@ scripts\lab.cmd s06 replay --count 1
 **Terminal 2 next:**
 
 ```bat
-scripts\lab.cmd s06 consume --count 1
+scripts\lab.cmd s06 consume --count 1 --timeout 300000
 ```
 
 **Expected evidence:** Two healthy COMMITs, three ROLLBACKs for order-2, 500 ms redelivery delay, then one DLQ entry. Replay repairs priorityClass in payload AND properties while retaining the business ID.
@@ -249,13 +249,13 @@ scripts\lab.cmd s06 consume --count 1
 **Terminal 2:**
 
 ```bat
-scripts\lab.cmd s07 subscribe --worker eu --selector "region = 'EU'" --count 3
+scripts\lab.cmd s07 subscribe --worker eu --selector "region = 'EU'" --count 3 --timeout 300000
 ```
 
 **Terminal 3:**
 
 ```bat
-scripts\lab.cmd s07 subscribe --worker cancellations --selector "eventType = 'OrderCancelled'" --count 2
+scripts\lab.cmd s07 subscribe --worker cancellations --selector "eventType = 'OrderCancelled'" --count 2 --timeout 300000
 ```
 
 **Terminal 4, after both are READY:**
@@ -286,7 +286,7 @@ scripts\lab.cmd s08 produce --count 1
 **Terminal 2:**
 
 ```bat
-scripts\lab.cmd s08 transfer --count 1 --rollback
+scripts\lab.cmd s08 transfer --count 1 --rollback --timeout 300000
 ```
 
 **Terminal 3 next:**
@@ -298,13 +298,13 @@ scripts\lab.cmd s08 browse --target outgoing
 **Terminal 2 next:**
 
 ```bat
-scripts\lab.cmd s08 transfer --count 1
+scripts\lab.cmd s08 transfer --count 1 --timeout 300000
 ```
 
 **Terminal 3 next:**
 
 ```bat
-scripts\lab.cmd s08 consume --target outgoing --count 1
+scripts\lab.cmd s08 consume --target outgoing --count 1 --timeout 300000
 scripts\lab.cmd s08 browse
 ```
 
@@ -330,7 +330,7 @@ scripts\lab.cmd s09 produce --count 2 --id ledger-demo
 **Terminal 2:**
 
 ```bat
-scripts\lab.cmd s09 consume --count 1 --crash
+scripts\lab.cmd s09 consume --count 1 --crash --timeout 300000
 ```
 
 **Terminal 2 after exit code 17:**
@@ -361,7 +361,7 @@ scripts\lab.cmd ledger show
 **Terminal 2:**
 
 ```bat
-scripts\lab.cmd s10 reply --count 1
+scripts\lab.cmd s10 reply --count 1 --timeout 300000
 ```
 
 **Terminal 3, after READY:**
@@ -480,7 +480,7 @@ scripts\lab.cmd s14 subscribe --subscription team --worker bob --continuous --sl
 **Terminal 4:**
 
 ```bat
-scripts\lab.cmd s14 subscribe --subscription audit --worker audit --count 6
+scripts\lab.cmd s14 subscribe --subscription audit --worker audit --count 6 --timeout 300000
 ```
 
 **Terminal 5, after all are READY:**
@@ -518,7 +518,7 @@ scripts\broker.cmd start
 **Terminal 2 after BROKER_READY:**
 
 ```bat
-scripts\lab.cmd s15 consume --count 3
+scripts\lab.cmd s15 consume --count 3 --timeout 300000
 ```
 
 **Expected evidence:** The same three business IDs arrive. Preserve runtime/broker and its NIO journal.
