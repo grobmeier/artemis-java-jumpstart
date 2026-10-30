@@ -1,9 +1,9 @@
-# Ergänzende Original-Lizenzhinweise
+# Additional original licence notices
 
-Die Laufzeit-JARs enthalten unveränderte Drittbibliotheken. Ihr Lizenzbestand liegt im Paket nach Maven-Koordinaten getrennt unter licenses/. Zusätzlich werden Originaltexte bereitgestellt, die diese drei Binär-JARs nicht selbst als Ressourcen mitliefern:
+Runtime JARs include unmodified third-party libraries. Their original licence resources are extracted by Maven coordinates under licenses/ in the package. Separate original texts are also supplied for these binaries where not embedded as resources:
 
-- H2 2.5.252: [ursprüngliche LICENSE.txt](https://github.com/h2database/h2database/blob/version-2.5.252/LICENSE.txt), [Quellcode dieser Ausgabe](https://github.com/h2database/h2database/tree/version-2.5.252). H2 ist unter MPL 2.0 oder EPL 1.0 verfügbar; der beigefügte Originaltext erläutert die Auswahl. Es wurden keine H2-Quellen verändert.
-- Netty 4.1.137.Final: [ursprüngliche NOTICE.txt](https://github.com/netty/netty/blob/netty-4.1.137.Final/NOTICE.txt), Apache License 2.0 (Text in der Haupt-LICENSE), einschließlich der im Original genannten Hinweise zu weiteren Bestandteilen.
-- JCTools 4.0.7: [ursprüngliche LICENSE](https://github.com/JCTools/JCTools/blob/v4.0.7/LICENSE), Apache License 2.0.
+- H2 2.5.252: [original LICENSE.txt](https://github.com/h2database/h2database/blob/version-2.5.252/LICENSE.txt), [release source](https://github.com/h2database/h2database/tree/version-2.5.252). H2 offers MPL 2.0 or EPL 1.0; the original text explains the choice. No H2 source was modified.
+- Netty 4.1.137.Final: [original NOTICE.txt](https://github.com/netty/netty/blob/netty-4.1.137.Final/NOTICE.txt), Apache License 2.0 (root LICENSE), including its original notices for other components.
+- JCTools 4.0.7: [original LICENSE](https://github.com/JCTools/JCTools/blob/v4.0.7/LICENSE), Apache License 2.0.
 
-[DEPENDENCIES.md](DEPENDENCIES.md) listet die gepackten Artefakte mit Links zu ihren POM-Lizenzdeklarationen. Die von Maven Wrapper kopierten Einstiegsskripte enthalten ihre ursprünglichen ASF-Lizenzköpfe. Eigene Dateien stehen unter der Haupt-LICENSE (Apache License 2.0).
+[DEPENDENCIES.md](DEPENDENCIES.md) lists packaged artifacts and POM licence declarations. Maven Wrapper entry scripts retain original ASF headers. Own files use the root Apache License 2.0. Original third-party texts are preserved unchanged.

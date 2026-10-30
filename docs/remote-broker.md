@@ -1,10 +1,10 @@
-# Optionaler zentraler Trainer-Broker
+# Optional central trainer broker
 
-Lokal bleibt der Standard. Dieses Profil startet denselben Java-Broker auf Linux und verwendet dieselben Client-JARs. Hier werden keine Änderungen an einem echten Server vorgenommen. Der Trainer betreibt einen eigenen Trainingsprozess mit eigenem Datenbereich und JDK 21; kein bestehender Produktivbroker wird umkonfiguriert.
+Local loopback is the three-station pilot default. This optional profile runs the same Java broker on Linux with the same client JARs. It does not deploy/configure a real server. A trainer-operated training process needs its own runtime directory and JDK 21; never reconfigure a production broker for this lab.
 
-## Broker vorbereiten (Trainer, Linux)
+## Trainer preparation on Linux
 
-Laufzeit-ZIP entpacken, nicht als root betreiben. Der Datenpfad muss innerhalb des eigenen `runtime/` liegen. `config/remote.properties` als `config/remote.local.properties` kopieren. Reale Werte lokal eintragen:
+Extract the runtime ZIP, run without root, and keep data inside its owned runtime/. Copy config/remote.properties to config/remote.local.properties and edit local values:
 
 ```properties
 profile=remote
@@ -17,35 +17,35 @@ keyStore=config/server.p12
 usersFile=config/users.properties
 ```
 
-Der Bind ist ausdrücklich nötig. `0.0.0.0` nur auf dem für das Training freigegebenen Server; alternativ konkrete Server-IP verwenden. Firewall, DNS, Zertifikatsname und Freigabe des TLS-TCP-Ports mit der zuständigen IT abstimmen. Dieses Programm stellt keine Webkonsole und keinen Management-HTTP-Port bereit.
+An explicit bind is required. Use 0.0.0.0 only on a server approved for training, or select its specific IP. Agree firewall, DNS, certificate name and TLS TCP port with IT. There is no web console, HTTP management port or trainee management permission.
 
-TLS-Schlüsselspeicher im PKCS12-Format mit privatem Schlüssel und vollständiger Zertifikatskette vom Trainer/der IT bereitstellen. Das Serverzertifikat braucht den tatsächlich verwendeten DNS-Namen als Subject Alternative Name. Kein `trustAll`, kein Abschalten der Hostname-Prüfung, kein Rückfall auf Klartext. Zertifikatsablauf vor dem Training prüfen. Für eine isolierte lokale Probe kann der Trainer mit dem JDK-Werkzeug `keytool` eine eigene Trainings-CA beziehungsweise ein Testzertifikat erstellen; Clients vertrauen dann ausdrücklich nur dieser Trainingswurzel. Nicht einfach irgendein ungeprüftes Serverzertifikat importieren.
+Provide a PKCS12 keystore containing the private key and full certificate chain. The certificate needs the actual DNS name as a Subject Alternative Name. Check expiry before training. Keep hostname verification enabled; no trustAll or plaintext fallback. An isolated local keytool test may use a dedicated training CA/test certificate whose agreed root is explicitly trusted; do not import arbitrary unverified server certificates.
 
-Individuelle Nutzer in der nicht eingecheckten `config/users.properties` (Werte nur als Platzhalter dargestellt):
+Create individual users in untracked config/users.properties (placeholders only):
 
 ```properties
-alice.password=<INDIVIDUELL_LOKAL_SETZEN>
+alice.password=<SET_INDIVIDUALLY_AND_LOCALLY>
 alice.namespace=alice
-bob.password=<ANDERES_PASSWORT_LOKAL_SETZEN>
+bob.password=<SET_A_DIFFERENT_PASSWORD_LOCALLY>
 bob.namespace=bob
-# Optional ausschließlich für bewusst gemeinsame Übungen:
+# Optional, only for intentionally shared exercises:
 # alice.groups=team
 # bob.groups=team
 ```
 
-Dateirechte auf den Trainer beschränken (`chmod 600` für lokale Konfiguration, Nutzerdatei und Schlüsseldatei). Die aktuelle Trainingsimplementierung lädt diese kleine private Nutzerdatei beim Start; sie ist kein produktiver Identity Provider. Keine echten Nutzerdaten verwenden. Die Rechte erlauben Senden, Empfangen, Browsen und Lebenszyklus der Trainingsziele im eigenen autorisierten Address-Bereich. Kein Managementrecht; Verwaltungszugriff bleibt beim Trainer im lokalen Brokerprozess. Persönliche Bereiche und optionale Gruppen werden explizit zugeordnet. Remote liegen auch die Fehleradressen im autorisierten Namespace: `<namespace>.sNN.DLQ` beziehungsweise `.EXPIRY`. Ihre Queues tragen zusätzlich den Quelladdress-Namen. Fremde Fehlerbereiche bleiben unzugänglich.
+Restrict local configuration, users and key files to the trainer (`chmod 600`). This small startup-loaded training file is not a production identity provider; use synthetic training accounts. Roles allow sending, receiving, browsing and destination lifecycle only within authorized namespaces/groups. Management stays in the trainer's local broker process. Remote error addresses are also namespace-bound: `<namespace>.sNN.DLQ` and `.EXPIRY`, with per-source queue names. Other users' error areas remain inaccessible.
 
-Passwort des Schlüsselspeichers in einer geschützten lokalen Datei als `keyStorePassword` oder über `LAB_KEY_STORE_PASSWORD` bereitstellen. Keine echten Passwörter als CLI-Argumente oder im Shellverlauf empfehlen. Brokerstart im Vordergrund:
+Set keyStorePassword in protected local configuration or LAB_KEY_STORE_PASSWORD, never CLI arguments/history. Start in the foreground:
 
 ```sh
 ./scripts/broker.sh start --config config/remote.local.properties
 ```
 
-Auf `BROKER_READY` warten. In einem weiteren Serverterminal kann derselbe Trainer `./scripts/broker.sh stop --config config/remote.local.properties` aufrufen. Auf das tatsächliche Prozessende warten. Neustart mit derselben Konfiguration und demselben Datenpfad. Der Broker gibt lokal schreibgeschützt Queue-Tiefe, Consumerzahl und aktive Zustellungen aus. Kein automatisch vorhandenes Browser-Management-Interface voraussetzen.
+Wait for BROKER_READY. From another server terminal, the trainer can run `./scripts/broker.sh stop --config config/remote.local.properties`; wait for actual exit before restarting with the same config/data path. The broker prints read-only depth, consumers and delivering status. Each instance needs a separate runtime root; the file lock intentionally permits one broker per lab directory.
 
-## Client vorbereiten (Firmenrechner)
+## Company-PC client preparation
 
-Trainer verteilt den geprüften Truststore mit der vereinbarten CA und nennt Host, Port, Namespace und individuellen Nutzer. Remote-Konfiguration lokal kopieren:
+The trainer supplies the verified truststore/CA, hostname, port, namespace and individual user. Copy the remote configuration locally:
 
 ```properties
 profile=remote
@@ -57,27 +57,27 @@ user=alice
 trustStore=config/training-trust.p12
 ```
 
-`password` und `trustStorePassword` nur in der privaten `*.local.properties`-Datei mit restriktiven Rechten oder als `LAB_PASSWORD`/`LAB_TRUST_STORE_PASSWORD` setzen. Remote verwendet keine lokalen Demo-Defaults. Eine Remote-Anforderung mit der lokalen Profildatei wird verweigert. Rangfolge bleibt CLI > LAB_-Umgebung > gewählte Datei > sichere Defaults; Secrets über private Datei oder Umgebung, nicht über CLI teilen. Relative Pfade beziehen sich auf das Lab-Verzeichnis.
+Set password and trustStorePassword only in a protected *.local.properties file or LAB_PASSWORD/LAB_TRUST_STORE_PASSWORD. There is no local demo fallback. Remote requests with the local profile file are refused. Precedence remains CLI > LAB_ environment > selected file > secure defaults; share secrets through protected files/environment, not CLI. Relative paths resolve from the lab root.
 
-In cmd.exe vor dem Training:
+Before training, in cmd.exe:
 
 ```bat
 scripts\doctor.cmd runtime --config config\remote.local.properties
 ```
 
-Die Probe prüft **TCP, TLS mit Hostname-/Zertifikatsprüfung und Authentifizierung** mit kurzer Frist. Anschließend eine Nachricht im eigenen Bereich senden und empfangen, um auch Berechtigungen zu prüfen:
+The bounded probe checks TCP, TLS certificate/hostname and authentication. Also send/receive one message in your own area to check authorization:
 
 ```bat
 scripts\lab.cmd s01 produce --count 1 --config config\remote.local.properties
 scripts\lab.cmd s01 consume --count 1 --config config\remote.local.properties
 ```
 
-Die Testsuite erzeugt eigene kurzlebige Zertifikate und prüft dieses Profil lokal, einschließlich falschem Hostnamen, fremdem Namespace, geteiltem Gruppenbereich und fremder DLQ. Das ersetzt keine Verbindungsprobe vom tatsächlichen Firmenrechner zum Trainer-Server.
+The automated suite uses temporary local certificates and checks wrong hostnames, unauthorized namespaces, groups and foreign DLQs. It cannot replace a real company-PC-to-trainer-server preflight.
 
-## Gemeinsame Übung und Grenzen
+## Shared work and limits
 
-Für A/S02 brauchen beide dieselbe autorisierte Gruppenqueue: beide Nutzer erhalten vom Trainer `groups=team`, dann bei beiden `--namespace team`. Für B/S03 nutzen sie denselben autorisierten Topic-Bereich und getrennte aktive Subscriptions. Für persönliche Versuche bleiben sie in alice/bob. E/H2 speichert auf jedem Rechner lokal und liefert keine rechnerübergreifende Idempotenzgarantie.
+A/S02 needs the same authorized group queue: trainer grants groups=team, then both clients use --namespace team. B/S03 needs one authorized topic and independent subscriptions. Personal runs remain in alice/bob. E/H2 stores a local ledger per machine, not distributed idempotency.
 
-HTTPS-Erreichbarkeit einer Website beweist keine Broker-Erreichbarkeit. Ein anderer Port umgeht keinen verpflichtenden HTTP-Proxy; das CORE-TCP-Protokoll ist kein HTTP. Bei Firewall-/Proxy-Sperren den lokalen Broker beziehungsweise das vorgebaute ZIP verwenden. Unternehmensvorgaben nicht umgehen.
+An HTTPS website loading does not establish broker connectivity. CORE TCP is not HTTP; a port change does not bypass a required HTTP proxy. If company firewall/proxy policy blocks access, use the local broker or prebuilt ZIP. Do not bypass company controls.
 
-Remote nie den gemeinsamen Broker zurücksetzen, um eine einzelne Übung zu säubern. Eigene Nachrichten kontrolliert konsumieren, eigene durable Identität mit unsubscribe entfernen; leere Queue gezielt mit cleanup --confirm entfernen. Nur der Trainer darf nach Ende **aller** Nutzer einen vollständigen Reset seines eigenen Server-Datenbereichs durchführen. Jede Instanz braucht ein eigenes Laufzeitverzeichnis; die Dateisperre erlaubt absichtlich nur einen Broker pro Lab-Verzeichnis.
+Never reset a shared remote broker for individual cleanup. Consume known owned work, unsubscribe your own durable identity, and remove an empty owned queue with cleanup --confirm. Only the trainer may reset its owned server area after **all** users have finished. Remote deployment/configuration is separately authorized work.

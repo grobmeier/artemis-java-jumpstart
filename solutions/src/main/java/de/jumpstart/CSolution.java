@@ -4,7 +4,7 @@ import jakarta.jms.*;
 
 import java.util.*;
 
-/** Aufgabe C: eigenständige ausführbare Musterlösung. */
+/** Exercise C: independent executable worked solution. */
 public final class CSolution {
     private CSolution() {}
 
@@ -61,7 +61,7 @@ public final class CSolution {
                     return;
                 }
                 if (!Set.of("consume", "subscribe", "register").contains(action))
-                    throw new UsageException("Aktion nicht unterstützt.");
+                    throw new UsageException("Unsupported action.");
                 try (var consumer =
                         session.createDurableConsumer((Topic) destination, subscription)) {
                     connection.start();
@@ -72,7 +72,7 @@ public final class CSolution {
                         Message message = consumer.receive(o.number("timeout", 5000, 100, 60000));
                         if (message == null) {
                             if (o.flag("continuous")) continue;
-                            throw new UsageException("Empfangsfrist abgelaufen.");
+                            throw new UsageException("Receive timeout expired.");
                         }
                         Messages.log(scenario, worker, "RECEIVE", message);
 

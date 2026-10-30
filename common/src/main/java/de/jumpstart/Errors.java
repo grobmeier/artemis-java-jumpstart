@@ -9,10 +9,10 @@ public final class Errors {
         String text =
                 e instanceof UsageException
                         ? e.getMessage()
-                        : "Vorgang fehlgeschlagen ("
+                        : "Operation failed ("
                                 + e.getClass().getSimpleName()
-                                + "). Broker/Port, TLS, Zugangsdaten und Berechtigungen prüfen;"
-                                + " scripts/doctor verwenden.";
-        System.err.println("Fehler: " + text);
+                                + "). Check the broker/port, TLS, credentials and permissions;"
+                                + " use scripts/doctor.";
+        System.err.println("Error: " + text);
     }
 }

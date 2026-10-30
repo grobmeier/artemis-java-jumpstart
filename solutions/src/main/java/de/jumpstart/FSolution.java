@@ -4,7 +4,7 @@ import jakarta.jms.*;
 
 import java.util.*;
 
-/** Aufgabe F: eigenständige ausführbare Musterlösung. */
+/** Exercise F: independent executable worked solution. */
 public final class FSolution {
     private FSolution() {}
 
@@ -55,7 +55,7 @@ public final class FSolution {
                     return;
                 }
                 if (!Set.of("consume", "subscribe", "register").contains(action))
-                    throw new UsageException("Aktion nicht unterstützt.");
+                    throw new UsageException("Unsupported action.");
                 try (var consumer = session.createConsumer(destination, o.get("selector", null))) {
                     connection.start();
                     System.out.println("READY worker=" + worker);
@@ -65,7 +65,7 @@ public final class FSolution {
                         Message message = consumer.receive(o.number("timeout", 5000, 100, 60000));
                         if (message == null) {
                             if (o.flag("continuous")) continue;
-                            throw new UsageException("Empfangsfrist abgelaufen.");
+                            throw new UsageException("Receive timeout expired.");
                         }
                         Messages.log(scenario, worker, "RECEIVE", message);
 

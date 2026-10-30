@@ -1,3 +1,3 @@
-# Musterlösungen
+# Worked solutions
 
-Eigenes Modul mit direkten Jakarta-Messaging-Aufrufen; keine Delegation an LabMain. Mit `-Ptraining` bauen. `scripts\solutions.cmd A produce --count 10` führt die Lösung A aus. Alle Lösungen verwenden dieselben Szenarioziele wie die zugehörigen Übungen; deshalb einen frischen Namespace verwenden. Siehe [docs/solutions.md](../docs/solutions.md).
+This separate module uses direct Jakarta Messaging calls without delegating to LabMain. Build with `-Ptraining`; run `scripts\solutions.cmd A produce --count 10`. Solutions and exercises use the same scenario destinations, so choose a fresh namespace. Try the tasks before reading [solution guidance](../docs/solutions.md).

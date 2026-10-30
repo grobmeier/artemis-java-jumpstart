@@ -11,12 +11,12 @@ public final class SolutionLedger implements AutoCloseable {
         Path dir = settings.home.resolve("runtime/ledger");
         Files.createDirectories(dir);
         Path path = dir.resolve(settings.namespace());
-        if (!dir.toRealPath().equals(dir)) throw new UsageException("Ledger-Symlink verweigert.");
+        if (!dir.toRealPath().equals(dir)) throw new UsageException("Ledger symlink refused.");
         for (String suffix : new String[] {"", ".mv.db", ".trace.db", ".lock.db"}) {
             Path file = Path.of(path + suffix);
             if (Files.exists(file, LinkOption.NOFOLLOW_LINKS)
                     && (Files.isSymbolicLink(file) || !file.toRealPath().equals(file)))
-                throw new UsageException("Ledger-Symlink/Junction verweigert.");
+                throw new UsageException("Ledger symlink/junction refused.");
         }
         db =
                 DriverManager.getConnection(

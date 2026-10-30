@@ -1,6 +1,6 @@
-# Windows ohne Administratorrechte
+# Windows without administrator rights
 
-Ein vom Trainer bereitgestelltes **JDK 21** entpacken oder die vorhandene Installation nutzen. Keine Dienste, Registry-Änderungen, Docker/WSL oder PowerShell-Ausführungsrichtlinien sind nötig. In **cmd.exe** prüfen:
+Use an existing **JDK 21** or extract the trainer's supplied JDK. No service installation, registry changes, Docker/WSL or PowerShell policy change is needed. In **cmd.exe**:
 
 ```bat
 where java
@@ -8,32 +8,28 @@ java -version
 javac -version
 ```
 
-Falls nötig nur im aktuellen Terminal setzen (Pfad anpassen):
+If needed, set only the current terminal environment (adjust paths):
 
 ```bat
 set "JAVA_HOME=C:\Tools\jdk-21"
 set "PATH=%JAVA_HOME%\bin;%PATH%"
 cd /d "C:\Training\Artemis Lab"
-.\mvnw.cmd clean verify
+.\mvnw.cmd -Ptraining clean verify
 .\scripts\doctor.cmd build
 ```
 
-Ein JRE reicht für den Quellbuild nicht. Der Wrapper liegt mit seiner Bootstrap-JAR im Repository; `mvnw.cmd` benötigt keine Freigabe für PowerShell-Skripte. Die erstmalige Maven-Distribution und Dependencies werden über HTTPS bezogen. Firmenproxy, interne Mirrors und Zertifikate nach Unternehmensvorgaben über vorhandene `%USERPROFILE%\.m2\settings.xml` und den bereitgestellten Java-Truststore konfigurieren. Die Wrapper-Distribution wird vor Maven selbst geladen: dafür muss auch deren HTTPS-URL freigegeben oder der Wrapper-Cache vom Trainer vorbereitet sein. Maven-Proxy-Einstellungen greifen erst nach dem Bootstrap. Keine TLS-Prüfung abschalten.
+A JRE cannot compile source. The wrapper bootstrap JAR is included; mvnw.cmd needs no PowerShell approval. First use downloads the Maven distribution and dependencies over HTTPS. Configure company proxy/mirrors/certificates through the approved `%USERPROFILE%\.m2\settings.xml` and supplied Java truststore. Wrapper download happens before Maven: its HTTPS URL also needs access or a prepared wrapper cache. Maven proxy settings apply after bootstrap. Keep TLS verification enabled.
 
-## Drei getrennte Terminals
+## Separate terminals
 
-Alle Terminals öffnen und jeweils ins Repository wechseln. Terminal 1 startet `scripts\broker.cmd start` und wartet auf `BROKER_READY`. Terminal 2 startet `scripts\lab.cmd queue consume --worker alice --count 10` und wartet auf `READY`. Erst dann führt Terminal 3 `scripts\lab.cmd queue produce --count 10` aus. [README](../README.md) enthält die vollständigen Befehle.
+Open each terminal in the lab root. Terminal 1 runs `scripts\broker.cmd start`; wait for `BROKER_READY`. Terminal 2 starts a worker; wait for `READY` before Terminal 3 publishes. [README](../README.md) contains the full sequence. Competing workers need a fourth terminal. Broker start deliberately blocks; do not paste client commands into its terminal.
 
-Der Broker läuft absichtlich im Vordergrund. Nicht alle Befehle hintereinander ins blockierte Terminal 1 kopieren. Strg+C beendet ihn geordnet. `scripts\broker.cmd stop` fordert aus einem anderen Terminal ebenfalls einen geordneten Stopp an. Vor Neustart oder Reset auf das Prozessende warten.
+Ctrl+C or `scripts\broker.cmd stop` from another terminal requests graceful broker stop. Wait for actual exit before restart/reset. Java output uses UTF-8. The cmd launcher temporarily changes console code page for Java and restores it on normal exit; no registry/policy changes occur.
 
-Die Java-Ausgaben verwenden UTF-8. Die cmd-Launcher stellen dafür die aktuelle Konsolen-Codepage während des Java-Aufrufs um und stellen sie beim normalen Prozessende wieder her. Es werden keine Registry-Einstellungen oder Ausführungsrichtlinien geändert.
+## Prebuilt ZIP and offline source builds
 
-## Vorgebautes ZIP
+Extract the verified runtime ZIP. Demos need the matching JDK, no compile step, Maven, network or IDE. Scripts look in lib/*.jar, or module target JARs in the source repository. Absolute script invocation works from other directories and paths with spaces. Relative configuration/store/data paths resolve against the lab root.
 
-Das vom Trainer gebaute Laufzeit-ZIP entpacken. Es braucht für die Demos nur das passende JDK, keinen Compilerlauf, Maven, Netzwerkzugriff oder IDE. Die Skripte suchen `lib/*.jar`; im Quellrepository verwenden sie alternativ die `target`-JARs. Aufrufe mit absolutem Skriptpfad funktionieren auch außerhalb des Repositoryverzeichnisses und bei Leerzeichen. Eigene relative `--config`-/Store-/Datenpfade werden zum Lab-Hauptverzeichnis aufgelöst.
+Editing tasks still requires source and a build environment. An **offline source build** needs the wrapper distribution, all dependencies and plugins prepared in cache. Run `mvnw.cmd -Ptraining clean verify` beforehand, then test `mvnw.cmd -o -Ptraining clean verify`. A cache does not replace a JDK.
 
-Ein **Offline-Quellbuild** ist etwas anderes: Wrapper-Distribution, alle Dependencies und Plugins müssen vorher im Maven-Cache liegen. Ein bereits ausgeführtes `clean verify -Ptraining` ist eine gute Vorbereitung; anschließend `mvnw.cmd -o clean verify -Ptraining` prüfen. Der Cache allein ersetzt kein JDK.
-
-## Typische Einstiegsprobleme
-
-`JAVA_HOME` muss auf das JDK-Hauptverzeichnis zeigen, nicht auf `bin`. `where java` kann mehrere Installationen zeigen; die Skripte bevorzugen `JAVA_HOME`. Bei fehlenden Artefakten zunächst bauen. Bei Portkonflikten denselben `--port 61620` in Broker- und allen Clientaufrufen verwenden. Eigene Daten werden unter `runtime/` angelegt. Keine fremden Prozesse oder Daten zur Fehlerbehebung löschen.
+JAVA_HOME points to the JDK root, not bin. `where java` can list several versions; scripts prefer JAVA_HOME. Build missing artifacts first. For a port conflict, use the same alternate `--port 61620` in broker and every client. Data belongs under runtime/. Do not delete unrelated processes or data.

@@ -26,13 +26,13 @@ public final class BrokerRuntime implements AutoCloseable {
             String bind = s.value("bind", s.remote() ? "" : "127.0.0.1");
             if (bind.isBlank() || (!s.remote() && !InetAddress.getByName(bind).isLoopbackAddress()))
                 throw new UsageException(
-                        "Remote-Bind muss explizit sein; lokal ist nur Loopback erlaubt.");
+                        "Remote bind must be explicit; local mode allows loopback only.");
             try (var probe = new ServerSocket()) {
                 probe.bind(new InetSocketAddress(bind, s.port()));
             } catch (BindException e) {
                 throw new UsageException(
-                        "Port ist belegt; anderen Port wählen oder eigenen Broker geordnet"
-                                + " stoppen.");
+                        "Port is occupied; choose another port or gracefully stop your own broker"
+                                + " first.");
             }
             var security = new SecurityConfiguration();
             Map<String, Set<Role>> roles = new HashMap<>();
@@ -48,18 +48,18 @@ public final class BrokerRuntime implements AutoCloseable {
                         String ns =
                                 Settings.token(
                                         users.getProperty(name + ".namespace", ""),
-                                        "Autorisierter Namespace");
+                                        "Authorized namespace");
                         if (users.getProperty(user).isBlank())
-                            throw new UsageException("Leeres Trainingspasswort verweigert.");
+                            throw new UsageException("Empty training password refused.");
                         security.addUser(name, users.getProperty(user));
                         security.addRole(name, ns);
                         grant(roles, ns, ns);
                         for (String group : users.getProperty(name + ".groups", "").split(","))
                             if (!group.isBlank())
-                                grant(roles, Settings.token(group.trim(), "Gruppenbereich"), ns);
+                                grant(roles, Settings.token(group.trim(), "Group namespace"), ns);
                     }
                 if (roles.isEmpty())
-                    throw new UsageException("Keine individuellen Trainingsnutzer konfiguriert.");
+                    throw new UsageException("No individual training users configured.");
             } else {
                 security.addUser(s.user(), s.password());
                 security.addRole(s.user(), "local");
@@ -77,7 +77,7 @@ public final class BrokerRuntime implements AutoCloseable {
                 String password = s.value("keyStorePassword", "");
                 if (store.isBlank() || password.isBlank())
                     throw new UsageException(
-                            "Remote-Broker benötigt TLS-Schlüsselspeicher und Passwort.");
+                            "Remote broker requires a TLS keystore and password.");
                 transport.put("sslEnabled", true);
                 transport.put("keyStorePath", s.home.resolve(store).toString());
                 transport.put("keyStorePassword", password);

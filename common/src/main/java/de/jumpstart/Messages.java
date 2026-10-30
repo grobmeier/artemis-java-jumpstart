@@ -72,7 +72,7 @@ public final class Messages {
                 m.getJMSRedelivered(),
                 m.propertyExists("JMSXDeliveryCount")
                         ? m.getIntProperty("JMSXDeliveryCount")
-                        : "unbekannt");
+                        : "unknown");
         System.out.flush();
     }
 }

@@ -1,47 +1,51 @@
-# Ausführbare Szenarien
+# Executable scenarios
 
-S01–S07 bilden den Pflichtlernweg. S08–S16 sind Vertiefungen. Alle Befehle sind für **cmd.exe** aus dem Lab-Verzeichnis angegeben. Unter Linux/macOS `scripts\lab.cmd` durch `./scripts/lab.sh` und `scripts\broker.cmd` durch `./scripts/broker.sh` ersetzen. Broker zuerst in **Terminal 1** mit `scripts\broker.cmd start` starten und auf `BROKER_READY` warten. Er bleibt während der unten genannten Terminalaufrufe aktiv. Wo `READY` gefordert ist, erst danach senden.
+The three-station pilot uses S01/S02, S03 and S05/S06. S04, S07 and S08–S16 are extensions. All commands below run in **cmd.exe from the lab root**. On Linux/macOS replace `scripts\lab.cmd` with `./scripts/lab.sh` and `scripts\broker.cmd` with `./scripts/broker.sh`.
 
-`--count` bei Consumern zählt **Zustellungen**, einschließlich zurückgerollter Versuche. Fehlende Nachrichten bis `--timeout` (Millisekunden pro Empfang, Standard 5000) ergeben Exitcode 2. `--continuous` ist der ausdrückliche Dauerbetrieb. Bei Worker-Verteilung darf die individuelle Menge unbekannt sein; dann Dauerbetrieb verwenden und erst nach vollständiger Gesamtmenge stoppen. `--sleep` simuliert Bearbeitungszeit in Millisekunden. Producer erzeugen pro Aufruf neue fachliche IDs; `--id` setzt absichtlich eine feste ID.
+First start `scripts\broker.cmd start` in **Terminal 1** and wait for `BROKER_READY`. Keep it open in the foreground throughout the other terminal steps. When a client must be `READY`, wait for that signal before publishing.
 
-Jedes Szenario hat eigene Ziele `<namespace>.sNN.orders.incoming` oder `.orders.events`; Standardnamespace `training`. Für jeden Wiederholungslauf einen frischen Namespace in **allen** Befehlen wählen, oder gezielt leeren. Bei konkurrierenden Clients alle im selben Szenario und Namespace starten. Aufräumen bedeutet: Worker beenden, restliche Queue-Nachrichten kontrolliert konsumieren, Durable Subscriptions abmelden. Leere Queue-Ressourcen ohne Consumer können zusätzlich gezielt mit `scripts\lab.cmd sNN cleanup --confirm [--target incoming|outgoing|dlq|expiry]` entfernt werden; Platzhalter vorher ersetzen. Topic-Ressourcen über ihre Subscription-Identität abmelden. Der vollständige Broker-Reset ist nur für ein allein genutztes lokales Lab mit gestopptem Broker geeignet; nie als Cleanup eines geteilten Remote-Brokers.
+Consumer `--count` counts deliveries, including rolled-back attempts. `--timeout` is milliseconds per receive (default 5000); an incomplete bounded run exits with 2. `--continuous` explicitly keeps receiving. Use continuous mode when worker allocation is unknown, stop after the combined complete ID set, then browse. `--sleep` simulates processing time in milliseconds. Producers create fresh business IDs per invocation; `--id` deliberately fixes an ID.
 
-## S01 – Einfache Queue
+Each scenario has separate `<namespace>.sNN.orders.incoming` or `.orders.events` destinations; default namespace is `training`. For repeats choose a fresh `--namespace` in **every** participating command, or drain known work and remove owned durable subscriptions. Empty queues without consumers can be removed using `scripts\lab.cmd sNN cleanup --confirm` with optional `--target incoming|outgoing|dlq|expiry`; replace placeholders before running. Topic cleanup uses the same subscription identity. Full broker reset is only for a stopped, exclusively owned local lab.
 
-**Zweck:** Zehn persistente Aufträge warten auch ohne Consumer.
 
-**Topologie:** Producer → dauerhafte Anycast-Queue → Worker. Eigener Zielbereich `training.s01.*`.
+## S01 — Simple queue
 
-**Terminal 3 zuerst:**
+**Purpose:** Ten persistent commands wait without a consumer.
+
+**Topology:** Producer → durable anycast queue → worker. Destinations: `training.s01.*`.
+
+**Terminal 3 first:**
 
 ```bat
 scripts\lab.cmd s01 produce --count 10
 scripts\lab.cmd s01 browse
 ```
 
-**Terminal 2 danach:**
+**Terminal 2 next:**
 
 ```bat
 scripts\lab.cmd s01 consume --worker alice --count 10
 ```
 
-**Terminal 3 zuletzt:**
+**Terminal 3 finally:**
 
 ```bat
 scripts\lab.cmd s01 browse
 ```
 
-**Erwartung:** Vorher visible=10, danach zehn COMMITs und visible=0.
+**Expected evidence:** Before processing: visible=10. Afterwards: ten COMMITs and visible=0.
 
-**Failure-Experiment:** Ohne Consumer senden und Producer beenden; die Aufträge bleiben.
+**Controlled experiment:** Publish without a worker and let the producer exit. The work remains.
 
-**Aufräumen:** Queue mit der bekannten Restmenge konsumieren.
+**Cleanup:** Consume the known remaining count.
 
-## S02 – Competing Consumers
 
-**Zweck:** Zwei Worker teilen Arbeit statt Kopien zu erhalten.
+## S02 — Competing consumers
 
-**Topologie:** Producer → eine Queue → Alice / Bob. Eigener Zielbereich `training.s02.*`.
+**Purpose:** Two workers share work instead of receiving independent copies.
+
+**Topology:** Producer → one queue → Alice / Bob. Destinations: `training.s02.*`.
 
 **Terminal 2:**
 
@@ -55,23 +59,24 @@ scripts\lab.cmd s02 consume --worker alice --continuous --sleep 150
 scripts\lab.cmd s02 consume --worker bob --continuous --sleep 150
 ```
 
-**Terminal 4, nach READY beider Worker:**
+**Terminal 4, after both workers are READY:**
 
 ```bat
 scripts\lab.cmd s02 produce --count 10
 ```
 
-**Erwartung:** Zehn fachliche IDs insgesamt; beide Worker beteiligen sich. Keine exakt hälftige oder abwechselnde Verteilung voraussetzen.
+**Expected evidence:** Ten business IDs in total; both workers participate. No exact half or alternating allocation is guaranteed.
 
-**Failure-Experiment:** Einen Worker während receive stoppen; der andere kann weitere Arbeit übernehmen. Abbruch nach Receive kann Wiederzustellung erzeugen.
+**Controlled experiment:** Stop one worker while it waits in receive. The other can take further work. A crash after receive may cause redelivery (Station 3).
 
-**Aufräumen:** Nach zehn COMMITs beide Worker stoppen; s02 browse muss visible=0 zeigen.
+**Cleanup:** After the complete set of ten COMMITs, stop both workers; s02 browse should show visible=0.
 
-## S03 – Nicht dauerhafte Topic-Subscriptions
 
-**Zweck:** Aktive unabhängige Interessenten erhalten Kopien.
+## S03 — Non-durable topic subscriptions
 
-**Topologie:** Topic → Rechnung-Subscription + Versand-Subscription. Eigener Zielbereich `training.s03.*`.
+**Purpose:** Active independent interests receive copies.
+
+**Topology:** Topic → billing subscription + shipping subscription. Destinations: `training.s03.*`.
 
 **Terminal 2:**
 
@@ -85,35 +90,36 @@ scripts\lab.cmd s03 subscribe --subscription billing --worker billing --count 3
 scripts\lab.cmd s03 subscribe --subscription shipping --worker shipping --count 3
 ```
 
-**Terminal 4, nach READY beider Services:**
+**Terminal 4, after both services are READY:**
 
 ```bat
 scripts\lab.cmd s03 produce --count 3
 ```
 
-**Terminal 2, nach Ende des ersten Laufs:**
+**Terminal 2, after the first run ends:**
 
 ```bat
 scripts\lab.cmd s03 subscribe --subscription late --worker late --count 2
 ```
 
-**Terminal 4, nach READY von late:**
+**Terminal 4, after late is READY:**
 
 ```bat
 scripts\lab.cmd s03 produce --count 2
 ```
 
-**Erwartung:** Rechnung und Versand erhalten je drei gleiche IDs; late nur die zwei zukünftigen.
+**Expected evidence:** Billing and shipping each receive the complete first set of three IDs; late receives only the two future IDs.
 
-**Failure-Experiment:** Vor Anlegen des late-Subscribers weitere Events senden: diese erscheinen bei ihm nicht.
+**Controlled experiment:** Publish before creating late: those events do not appear there. A bounded missing-count receive exits with 2. The CLI label is not a durable identity.
 
-**Aufräumen:** Nicht dauerhafte Subscriptions verschwinden beim Trennen; keine dauerhafte Historie.
+**Cleanup:** Close the consumers; non-durable subscriptions disappear on disconnection.
 
-## S04 – Durable Topic-Subscription
 
-**Zweck:** Registrieren, offline sein, später dieselbe Identität nutzen.
+## S04 — Durable topic subscription
 
-**Topologie:** Topic → dauerhafte shipping-Subscription. Eigener Zielbereich `training.s04.*`.
+**Purpose:** Register first, go offline, then reconnect using the same identity.
+
+**Topology:** Topic → durable shipping subscription. Destinations: `training.s04.*`.
 
 **Terminal 2:**
 
@@ -121,54 +127,55 @@ scripts\lab.cmd s03 produce --count 2
 scripts\lab.cmd s04 register --subscription shipping
 ```
 
-**Terminal 3, nach Ende von register:**
+**Terminal 3, after register exits:**
 
 ```bat
 scripts\lab.cmd s04 produce --count 3
 ```
 
-**Terminal 2 danach:**
+**Terminal 2 next:**
 
 ```bat
 scripts\lab.cmd s04 subscribe --subscription shipping --count 3
 ```
 
-**Terminal 2, zweiter Lauf:**
+**Terminal 2, second run:**
 
 ```bat
 scripts\lab.cmd s04 register --subscription shipping
 ```
 
-**Terminal 3 danach:**
+**Terminal 3 next:**
 
 ```bat
 scripts\lab.cmd s04 produce --count 3
 scripts\broker.cmd stop
 ```
 
-**Terminal 1, nach Brokerende:**
+**Terminal 1, after the broker exits:**
 
 ```bat
 scripts\broker.cmd start
 ```
 
-**Terminal 2, nach BROKER_READY:**
+**Terminal 2, after BROKER_READY:**
 
 ```bat
 scripts\lab.cmd s04 subscribe --subscription shipping --count 3
 ```
 
-**Erwartung:** Je drei Offline-Events kommen an, im zweiten Lauf auch nach geordnetem Neustart. Client-ID training.s04.client-shipping und Subscription training.s04.shipping bleiben identisch.
+**Expected evidence:** Three offline events arrive each time, including after graceful restart. Keep client ID training.s04.client-shipping and subscription training.s04.shipping unchanged.
 
-**Failure-Experiment:** Mit --subscription other verbinden: neue Identität erhält nicht die wartenden Events von shipping; begrenzter Empfang endet mit Timeout.
+**Controlled experiment:** Connect with --subscription other: this new identity does not receive shipping history and times out.
 
-**Aufräumen:** scripts\lab.cmd s04 unsubscribe --subscription shipping; eventuell versehentlich angelegtes other ebenfalls abmelden, nachdem dessen Consumer beendet ist.
+**Cleanup:** Run scripts\lab.cmd s04 unsubscribe --subscription shipping after its consumer exits. Remove an accidental other identity separately.
 
-## S05 – Acknowledgement und Wiederzustellung
 
-**Zweck:** Receive allein bestätigt keinen Fachabschluss.
+## S05 — Acknowledgement and redelivery
 
-**Topologie:** Queue → transacted Worker → Rollback oder Crash. Eigener Zielbereich `training.s05.*`.
+**Purpose:** Receive alone does not establish successful business processing.
+
+**Topology:** Queue → transacted worker → rollback or crash. Destinations: `training.s05.*`.
 
 **Terminal 3:**
 
@@ -182,23 +189,24 @@ scripts\lab.cmd s05 produce --count 1 --id ack-demo
 scripts\lab.cmd s05 consume --count 1 --rollback
 ```
 
-**Terminal 2 danach:**
+**Terminal 2 next:**
 
 ```bat
 scripts\lab.cmd s05 consume --count 1 --timeout 10000
 ```
 
-**Erwartung:** Dieselbe fachliche ID wird erneut empfangen, typischerweise mit JMSRedelivered=true und attempt=2.
+**Expected evidence:** The same business ID returns, with JMSRedelivered=true and attempt=2 in the controlled run.
 
-**Failure-Experiment:** Statt --rollback im ersten Worker --crash verwenden (erwarteter Exitcode 17); die Brokererkennung kann einige Sekunden benötigen.
+**Controlled experiment:** Use --crash instead of --rollback in the first worker: intentional exit 17, before JMS commit. Broker detection can take seconds; recover with --timeout 10000.
 
-**Aufräumen:** Nach erfolgreichem Commit ist die Queue leer; Grundlagen zu AUTO_ACKNOWLEDGE und sessionweitem CLIENT_ACKNOWLEDGE in concepts.md lesen.
+**Cleanup:** After successful commit the queue is empty. Read AUTO_ACKNOWLEDGE and session-wide CLIENT_ACKNOWLEDGE in concepts.md.
 
-## S06 – Retry und Dead Letter
 
-**Zweck:** Die zweite von drei Orders ist absichtlich ungültig.
+## S06 — Retry and dead letters
 
-**Topologie:** Eingangsqueue → maximal drei Versuche → DLQ → reparierter Replay. Eigener Zielbereich `training.s06.*`.
+**Purpose:** The second of three orders is intentionally invalid.
+
+**Topology:** Input queue → maximum three attempts → DLQ → repaired replay. Destinations: `training.s06.*`.
 
 **Terminal 3:**
 
@@ -212,30 +220,31 @@ scripts\lab.cmd s06 produce --count 3
 scripts\lab.cmd s06 consume --count 5
 ```
 
-**Terminal 3 danach:**
+**Terminal 3 next:**
 
 ```bat
 scripts\lab.cmd s06 browse --target dlq
 scripts\lab.cmd s06 replay --count 1
 ```
 
-**Terminal 2 danach:**
+**Terminal 2 next:**
 
 ```bat
 scripts\lab.cmd s06 consume --count 1
 ```
 
-**Erwartung:** Zwei gesunde COMMITs, drei ROLLBACKs für order-2, 500 ms Verzögerung zwischen Versuchen; danach eine DLQ-Nachricht. Replay repariert priorityClass und behält die ID.
+**Expected evidence:** Two healthy COMMITs, three ROLLBACKs for order-2, 500 ms redelivery delay, then one DLQ entry. Replay repairs priorityClass in payload AND properties while retaining the business ID.
 
-**Failure-Experiment:** Ohne Reparatur würde dieselbe ungültige Fachinformation wieder scheitern. Drei Versuche sind zwei zusätzliche Retries, nicht drei Retries.
+**Controlled experiment:** Without repair the same invalid information would fail again. Three total attempts mean two additional retries.
 
-**Aufräumen:** s06 browse und s06 browse --target dlq müssen visible=0 zeigen; DLQ nur gezielt lesen, nicht fremde Fehler löschen.
+**Cleanup:** Both s06 browse and s06 browse --target dlq should show visible=0. Inspect only your own failed work.
 
-## S07 – Selektoren und fachliches Routing
 
-**Zweck:** Eigenschaften steuern die jeweilige Sicht.
+## S07 — Selectors and business routing
 
-**Topologie:** Topic → EU-Filter + Stornierungsfilter. Eigener Zielbereich `training.s07.*`.
+**Purpose:** Message properties determine each subscription view.
+
+**Topology:** Topic → EU filter + cancellation filter. Destinations: `training.s07.*`.
 
 **Terminal 2:**
 
@@ -249,23 +258,24 @@ scripts\lab.cmd s07 subscribe --worker eu --selector "region = 'EU'" --count 3
 scripts\lab.cmd s07 subscribe --worker cancellations --selector "eventType = 'OrderCancelled'" --count 2
 ```
 
-**Terminal 4, nach READY beider:**
+**Terminal 4, after both are READY:**
 
 ```bat
 scripts\lab.cmd s07 produce --count 6
 ```
 
-**Erwartung:** Vorhersage: EU sind Order 1, 3, 5; Stornierungen sind 3 und 6. Die fachlichen IDs enden entsprechend auf -N-1.
+**Expected evidence:** EU receives orders 1,3,5; cancellations receive 3,6. Business IDs end in the corresponding -N-1 suffix.
 
-**Failure-Experiment:** Selektor auf nicht vorhandene Property setzen: kein Treffer, Timeout; JSON-Feld allein wäre nicht ausreichend.
+**Controlled experiment:** Filter a missing property: no matches and bounded timeout. A JSON field alone cannot satisfy a selector.
 
-**Aufräumen:** Nicht dauerhafte Subscriptions enden mit ihren Verbindungen.
+**Cleanup:** Non-durable subscriptions end with their connections.
 
-## S08 – Lokale Messaging-Transaktion
 
-**Zweck:** Receive und Send gelten atomar gegenüber demselben Broker.
+## S08 — Local messaging transaction
 
-**Topologie:** Queue A → eine transacted Session → Queue B. Eigener Zielbereich `training.s08.*`.
+**Purpose:** Receive and send are atomic against the same broker.
+
+**Topology:** Queue A → one transacted session → queue B. Destinations: `training.s08.*`.
 
 **Terminal 3:**
 
@@ -279,36 +289,37 @@ scripts\lab.cmd s08 produce --count 1
 scripts\lab.cmd s08 transfer --count 1 --rollback
 ```
 
-**Terminal 3 danach:**
+**Terminal 3 next:**
 
 ```bat
 scripts\lab.cmd s08 browse --target outgoing
 ```
 
-**Terminal 2 danach:**
+**Terminal 2 next:**
 
 ```bat
 scripts\lab.cmd s08 transfer --count 1
 ```
 
-**Terminal 3 danach:**
+**Terminal 3 next:**
 
 ```bat
 scripts\lab.cmd s08 consume --target outgoing --count 1
 scripts\lab.cmd s08 browse
 ```
 
-**Erwartung:** Rollback lässt keinen Ausgang sichtbar werden. Commit bestätigt Eingang und erzeugt Ausgang; am Ende Eingang leer.
+**Expected evidence:** Rollback produces no visible output. Commit confirms input and publishes output; input is empty at the end.
 
-**Failure-Experiment:** --rollback mehrfach ausführen: nach dem Versuchslimit kann der Eingang zur DLQ gehen. Für den Vergleich genau einmal zurückrollen.
+**Controlled experiment:** Only roll back once for this comparison. Repeating rollback can eventually send the input to the DLQ.
 
-**Aufräumen:** Beide Queues kontrolliert leeren; das ist keine DB- oder verteilte Transaktion.
+**Cleanup:** Drain both queues deliberately. This is neither a DB nor a distributed transaction.
 
-## S09 – Idempotente Verarbeitung
 
-**Zweck:** Zwei technische Sends teilen eine fachliche ID.
+## S09 — Idempotent processing
 
-**Topologie:** Queue → H2-Transaktion → JMS-Commit. Eigener Zielbereich `training.s09.*`.
+**Purpose:** Two technical sends share one business ID.
+
+**Topology:** Queue → H2 transaction → JMS commit. Destinations: `training.s09.*`.
 
 **Terminal 3:**
 
@@ -322,29 +333,30 @@ scripts\lab.cmd s09 produce --count 2 --id ledger-demo
 scripts\lab.cmd s09 consume --count 1 --crash
 ```
 
-**Terminal 2 nach Exitcode 17:**
+**Terminal 2 after exit code 17:**
 
 ```bat
 scripts\lab.cmd s09 consume --count 2 --timeout 10000
 ```
 
-**Terminal 3 danach:**
+**Terminal 3 next:**
 
 ```bat
 scripts\lab.cmd ledger show
 ```
 
-**Erwartung:** Crash erfolgt nach DB-Commit, vor JMS-Commit. Nach Neustart zwei DUPLICATE-Beobachtungen mit verschiedenen JMSMessageIDs und genau ein Ledger-Eintrag (bei frischem Namespace).
+**Expected evidence:** Crash after DB commit, before JMS commit. Recovery reports two DUPLICATE observations with different JMSMessageIDs and exactly one ledger row in a fresh namespace.
 
-**Failure-Experiment:** Ledger erst nach dem Test bei gestoppten Workern zurücksetzen und erneut senden: der Effekt wäre wieder möglich. Das zeigt die Bedeutung dauerhafter IDs.
+**Controlled experiment:** After the experiment, stop workers and reset the ledger, then resend: the effect can happen again. Durable IDs matter.
 
-**Aufräumen:** scripts\lab.cmd ledger reset --confirm nur im eigenen Namespace bei gestoppten Workern; Queue vorher leer prüfen.
+**Cleanup:** Use scripts\lab.cmd ledger reset --confirm in your own namespace with workers stopped; first verify the queue is empty.
 
-## S10 – Request Reply
 
-**Zweck:** JMSReplyTo und geprüfte Correlation ordnen die Antwort zu.
+## S10 — Request/reply
 
-**Topologie:** Request-Queue → Antwortdienst → temporäre Reply-Queue. Eigener Zielbereich `training.s10.*`.
+**Purpose:** JMSReplyTo and checked correlation associate a reply with its request.
+
+**Topology:** Request queue → responder → temporary reply queue. Destinations: `training.s10.*`.
 
 **Terminal 2:**
 
@@ -352,23 +364,24 @@ scripts\lab.cmd ledger show
 scripts\lab.cmd s10 reply --count 1
 ```
 
-**Terminal 3, nach READY:**
+**Terminal 3, after READY:**
 
 ```bat
 scripts\lab.cmd s10 request --timeout 3000
 ```
 
-**Erwartung:** Antwort besitzt JMSCorrelationID gleich JMSMessageID des Requests. Temporäre Queue wird bei Ende der erzeugenden Verbindung entfernt.
+**Expected evidence:** Reply JMSCorrelationID equals the request JMSMessageID. Closing the creating connection removes the temporary reply queue.
 
-**Failure-Experiment:** Ohne Antwortdienst s10 request --timeout 500 aufrufen: Exitcode 2. Bereits gesendeter Request bleibt; spätere Antwort findet kein lebendes temporäres Ziel.
+**Controlled experiment:** Run s10 request --timeout 500 without a responder: exit 2. The committed request remains, but its temporary reply destination is no longer alive.
 
-**Aufräumen:** Nach Timeout verbliebene Requests mit s10 consume --count <REST> bewusst konsumieren; keinen verspäteten Antwortdienst auf verwaiste Requests loslassen.
+**Cleanup:** Deliberately consume leftover requests using s10 consume --count <REMAINING>. Do not start a late responder for orphaned requests.
 
-## S11 – Time to Live und Expiry
 
-**Zweck:** Veraltete Arbeit endet unabhängig von Verarbeitungsfehlern.
+## S11 — Time to live and expiry
 
-**Topologie:** Queue ohne Consumer → TTL → Expiry-Queue. Eigener Zielbereich `training.s11.*`.
+**Purpose:** Stale work expires independently of processing failures.
+
+**Topology:** Queue without consumers → TTL → expiry queue. Destinations: `training.s11.*`.
 
 **Terminal 3:**
 
@@ -376,24 +389,25 @@ scripts\lab.cmd s10 request --timeout 3000
 scripts\lab.cmd s11 produce --count 1 --ttl 500
 ```
 
-**Terminal 3 nach etwa einer Sekunde:**
+**Terminal 3 after about one second:**
 
 ```bat
 scripts\lab.cmd s11 browse
 scripts\lab.cmd s11 browse --target expiry
 ```
 
-**Erwartung:** Eingang leer, Expiry enthält die fachliche ID. Scanintervall 100 ms; Betriebssystem und Scheduling brauchen Toleranz.
+**Expected evidence:** Input empty, expiry contains the business ID. The scan interval is 100 ms; allow OS scheduling tolerance.
 
-**Failure-Experiment:** Einen Worker vor Ablauf starten: er kann die noch gültige Nachricht konsumieren, dann entsteht kein Expiry-Eintrag.
+**Controlled experiment:** Start a worker before TTL expires: it can consume the valid message, leaving no expiry entry.
 
-**Aufräumen:** Für Wiederholung frischen Namespace nutzen; abgelaufene Nachrichten gezielt mit s11 consume --target expiry --count 1 entfernen.
+**Cleanup:** Use a fresh namespace for repeats; consume the owned expiry entry with s11 consume --target expiry --count 1.
 
-## S12 – Verzögerte Zustellung
 
-**Zweck:** Delivery-Delay betrifft die erste Zustellung.
+## S12 — Delayed delivery
 
-**Topologie:** Producer → geplante Verfügbarkeit → Queue-Consumer. Eigener Zielbereich `training.s12.*`.
+**Purpose:** Delivery delay affects first availability.
+
+**Topology:** Producer → scheduled availability → queue consumer. Destinations: `training.s12.*`.
 
 **Terminal 2:**
 
@@ -401,23 +415,24 @@ scripts\lab.cmd s11 browse --target expiry
 scripts\lab.cmd s12 consume --count 1 --timeout 10000
 ```
 
-**Terminal 3, nach READY:**
+**Terminal 3, after READY:**
 
 ```bat
 scripts\lab.cmd s12 produce --count 1 --delay 2000
 ```
 
-**Erwartung:** Zustellung frühestens ungefähr zwei Sekunden nach dem Send, mit Schedulingtoleranz. MessageProducer.setDeliveryDelay wird im Code sichtbar verwendet.
+**Expected evidence:** Delivery no earlier than approximately two seconds after send, with scheduling tolerance. Code uses MessageProducer.setDeliveryDelay.
 
-**Failure-Experiment:** Worker mit --timeout 500 starten und danach mit längerer Frist erneut verbinden: früher Timeout verwirft die wartende Nachricht nicht.
+**Controlled experiment:** Use --timeout 500, then reconnect with a longer timeout. The early timeout does not discard the waiting message.
 
-**Aufräumen:** Nach einem Commit ist die Queue leer.
+**Cleanup:** One successful commit leaves the queue empty.
 
-## S13 – Message Groups und Reihenfolge
 
-**Zweck:** Je Order drei aufeinanderfolgende Events beobachten.
+## S13 — Message groups and order
 
-**Topologie:** Queue mit JMSXGroupID pro Order → zwei Worker. Eigener Zielbereich `training.s13.*`.
+**Purpose:** Observe three sequential events per order.
+
+**Topology:** Queue with JMSXGroupID per order → two workers. Destinations: `training.s13.*`.
 
 **Terminal 2:**
 
@@ -431,23 +446,24 @@ scripts\lab.cmd s13 consume --worker alice --continuous --sleep 100
 scripts\lab.cmd s13 consume --worker bob --continuous --sleep 100
 ```
 
-**Terminal 4, nach READY beider:**
+**Terminal 4, after both are READY:**
 
 ```bat
 scripts\lab.cmd s13 produce --count 4 --events 3
 ```
 
-**Erwartung:** Zwölf COMMITs, sequence=1,2,3 pro orderId bei demselben Worker im kontrollierten Lauf. Nicht die Gesamtlogreihenfolge verschiedener JVMs vergleichen.
+**Expected evidence:** Twelve COMMITs; sequence=1,2,3 for each orderId at the same worker in the controlled run. Do not compare total log ordering across JVMs.
 
-**Failure-Experiment:** Einen Worker beenden; Gruppenzuordnung kann wechseln und unbestätigte Arbeit erneut erscheinen. Keine globale Reihenfolge oder Exactly-once-Garantie.
+**Controlled experiment:** Stop a worker: group ownership may change and uncommitted work can return. This does not guarantee global order or exactly-once processing.
 
-**Aufräumen:** Nach vollständiger Menge Worker stoppen, s13 browse prüfen. Smokecheck mit frischem Namespace wiederholen.
+**Cleanup:** After the complete ID set, stop workers and browse s13. Repeat in a fresh namespace.
 
-## S14 – Shared Durable Subscription
 
-**Zweck:** Geteilte Subscription und unabhängige Kopie unterscheiden.
+## S14 — Shared durable subscription
 
-**Topologie:** Topic → team (Alice/Bob teilen) + audit (eigene Kopie). Eigener Zielbereich `training.s14.*`.
+**Purpose:** Distinguish a shared subscription from an independent copy.
+
+**Topology:** Topic → team (Alice/Bob share) + audit (separate copy). Destinations: `training.s14.*`.
 
 **Terminal 2:**
 
@@ -467,23 +483,24 @@ scripts\lab.cmd s14 subscribe --subscription team --worker bob --continuous --sl
 scripts\lab.cmd s14 subscribe --subscription audit --worker audit --count 6
 ```
 
-**Terminal 5, nach READY aller:**
+**Terminal 5, after all are READY:**
 
 ```bat
 scripts\lab.cmd s14 produce --count 6
 ```
 
-**Erwartung:** Team verarbeitet sechs IDs insgesamt, Audit dieselben sechs vollständig. Anders als S02 hängt die geteilte Queue hier als Subscription an einem Topic.
+**Expected evidence:** Team processes six IDs in total; audit receives the same complete six. The shared queue is a topic subscription.
 
-**Failure-Experiment:** Andere Subscription-Namen für Alice und Bob wählen: dann entstehen zwei eigene Kopien statt geteilter Arbeit.
+**Controlled experiment:** Give Alice and Bob different subscription names: this creates two independent copies instead of shared work.
 
-**Aufräumen:** Worker stoppen; s14 unsubscribe --subscription team und s14 unsubscribe --subscription audit. Versehentliche andere Namen ebenfalls gezielt abmelden.
+**Cleanup:** Stop workers, then s14 unsubscribe --subscription team and s14 unsubscribe --subscription audit. Remove accidental names separately.
 
-## S15 – Persistenz und Neustart
 
-**Zweck:** Bestätigte persistente Sends überleben den Neustart.
+## S15 — Persistence and restart
 
-**Topologie:** persistente Queue → geordneter Brokerneustart → Worker. Eigener Zielbereich `training.s15.*`.
+**Purpose:** Confirmed persistent sends survive graceful restart.
+
+**Topology:** Persistent queue → graceful broker restart → worker. Destinations: `training.s15.*`.
 
 **Terminal 3:**
 
@@ -492,29 +509,30 @@ scripts\lab.cmd s15 produce --count 3
 scripts\broker.cmd stop
 ```
 
-**Terminal 1 nach Brokerende:**
+**Terminal 1 after the broker exits:**
 
 ```bat
 scripts\broker.cmd start
 ```
 
-**Terminal 2 nach BROKER_READY:**
+**Terminal 2 after BROKER_READY:**
 
 ```bat
 scripts\lab.cmd s15 consume --count 3
 ```
 
-**Erwartung:** Dieselben drei fachlichen IDs kommen an. Derselbe runtime/broker-Pfad mit NIO-Journal bleibt erhalten.
+**Expected evidence:** The same three business IDs arrive. Preserve runtime/broker and its NIO journal.
 
-**Failure-Experiment:** Vor Neustart einen anderen --dataDir verwenden: das ist ein anderer Datenbestand und kein Beleg für Datenverlust im ursprünglichen Journal.
+**Controlled experiment:** A different --dataDir refers to a different dataset; its empty state does not prove loss in the original journal.
 
-**Aufräumen:** Queue nach erfolgreichem Empfang leer; kein Stromausfalltest und keine Aussage zu HA.
+**Cleanup:** Queue empty after successful consumption. This is not a power-loss or HA test.
 
-## S16 – Rückstau und langsame Consumer
 
-**Zweck:** Sichtbarer Backlog bei kleiner begrenzter Last.
+## S16 — Backlog and slow consumers
 
-**Topologie:** begrenzter Producer → Queue → langsamer und später zweiter Worker. Eigener Zielbereich `training.s16.*`.
+**Purpose:** Observe backlog under a small bounded load.
+
+**Topology:** Bounded producer → queue → slow worker and later helper. Destinations: `training.s16.*`.
 
 **Terminal 3:**
 
@@ -529,14 +547,14 @@ scripts\lab.cmd s16 browse
 scripts\lab.cmd s16 consume --worker slow --continuous --sleep 500
 ```
 
-**Terminal 4 später:**
+**Terminal 4 later:**
 
 ```bat
 scripts\lab.cmd s16 consume --worker helper --continuous --sleep 100
 ```
 
-**Erwartung:** Anfangs 20 wartende IDs, dann sinkender Rückstau. Brokerterminal zeigt depth, consumers und delivering alle zwei Sekunden. Zweiter Worker erhöht mögliche Abnahmerate.
+**Expected evidence:** Initially 20 waiting IDs, then falling backlog. Broker prints depth, consumers and delivering every two seconds. A helper can increase drain rate.
 
-**Failure-Experiment:** Hilfsworker stoppen, wieder starten und Rate vergleichen. Nicht unbegrenzt neue Producer starten oder die Platte füllen.
+**Controlled experiment:** Stop/restart the helper and compare rate. Do not launch unbounded producers or fill the disk.
 
-**Aufräumen:** Nach 20 Gesamt-COMMITs Worker stoppen; s16 browse visible=0. Paging ab 1 MiB/Address, global 64 MiB, consumerWindowSize=0; Prefetch beeinflusst sonst die Verteilung.
+**Cleanup:** After 20 total COMMITs stop workers; s16 browse should show visible=0. Paging starts at 1 MiB/address, global 64 MiB, consumerWindowSize=0; prefetch would affect allocation.

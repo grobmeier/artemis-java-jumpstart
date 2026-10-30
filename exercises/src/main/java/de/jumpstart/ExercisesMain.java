@@ -15,7 +15,7 @@ public final class ExercisesMain {
                 case "D" -> DExercise.run(settings, options);
                 case "E" -> EExercise.run(settings, options);
                 case "F" -> FExercise.run(settings, options);
-                default -> throw new UsageException("Aufgabe A bis F wählen.");
+                default -> throw new UsageException("Choose exercise A through F.");
             }
         } catch (Exception e) {
             Errors.report(e);
