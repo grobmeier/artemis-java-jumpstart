@@ -15,6 +15,11 @@ set "JAVA_HOME=C:\Tools\jdk-21"
 set "PATH=%JAVA_HOME%\bin;%PATH%"
 cd /d "C:\Training\Artemis Lab"
 .\scripts\doctor.cmd build
+```
+
+Only after `BUILD_READY`, build separately:
+
+```bat
 .\mvnw.cmd -Ptraining clean verify
 ```
 

@@ -28,7 +28,17 @@ This repository is **private**: [grobmeier/artemis-java-jumpstart](https://githu
 git clone https://github.com/grobmeier/artemis-java-jumpstart.git
 cd artemis-java-jumpstart
 git switch -c feature/YOUR_GITHUB_NAME-exercise-a
+```
+
+Run the preflight separately; stop if it does not report `BUILD_READY`:
+
+```bat
 .\scripts\doctor.cmd build
+```
+
+Only then build the source:
+
+```bat
 .\mvnw.cmd -Ptraining clean verify
 ```
 
