@@ -28,6 +28,6 @@ Wait for `READY`.
 
 The worker waits up to five minutes per receive while you open the producer terminal. Check ten `COMMIT` records. Stop the broker using Ctrl+C or `.\scripts\broker.cmd stop` from Terminal 3. Wait for process exit before restart/reset. On Linux/macOS use `./scripts/broker.sh` and `./scripts/lab.sh`; scripts support paths with spaces and absolute invocation from another directory.
 
-Diagnosis: `.\scripts\doctor.cmd runtime`. See [scenarios](docs/scenarios.md). This package contains demo JARs, not exercise source; implementing tasks requires the full private source repository and a build environment. Offline source builds also need the prepared wrapper and dependency cache. Public local demo credentials are `lab` / `lab-local-only`, loopback only. Remote use needs individual credentials and TLS; see [remote guide](docs/remote-broker.md).
+Diagnosis: `.\scripts\doctor.cmd runtime`. See [scenarios](docs/scenarios.md). This package contains demo JARs, not exercise source; implementing tasks requires the full source repository and a build environment. Offline source builds also need the prepared wrapper and dependency cache. Public local demo credentials are `lab` / `lab-local-only`, loopback only. Remote use needs individual credentials and TLS; see [remote guide](docs/remote-broker.md).
 
 Data is stored under `runtime/broker`; S09 also uses `runtime/ledger`. Stop all workers and the broker before `.\scripts\broker.cmd reset --confirm`. This preserves the H2 ledger. Never reset a shared remote broker for an individual exercise.

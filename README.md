@@ -22,7 +22,7 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 If your Windows terminal opens PowerShell, run `cmd` before using the Windows examples. See [Windows setup](docs/windows-setup.md) for native PowerShell environment commands. New terminals do not inherit environment changes made in another terminal.
 
-This repository is **private**: [grobmeier/artemis-java-jumpstart](https://github.com/grobmeier/artemis-java-jumpstart). Repository access requires an invitation from your trainer. After accepting your personal invitation:
+The source, exercises and worked solutions are public: [grobmeier/artemis-java-jumpstart](https://github.com/grobmeier/artemis-java-jumpstart). Clone it to practise locally:
 
 ```bat
 git clone https://github.com/grobmeier/artemis-java-jumpstart.git
@@ -42,7 +42,7 @@ Only then build the source:
 .\mvnw.cmd -Ptraining clean verify
 ```
 
-Replace `YOUR_GITHUB_NAME`. Without Git, sign in and choose **Code → Download ZIP**. See [access, personal branches and GitHub Actions](docs/github-training.md). Invited collaborators can also read the sample solutions and other branches.
+Replace `YOUR_GITHUB_NAME` with your username or another personal branch label. Without Git, choose **Code → Download ZIP**. No invitation is needed to read or clone the source. See [forks, contributions and GitHub Actions](docs/github-training.md) to share changes.
 
 Wait for **BUILD SUCCESS** before continuing. The first build downloads Maven/dependencies and runs real local brokers; it can take several minutes. `doctor build` works before any JAR exists and does not need a running broker. If a command fails, stop and check [troubleshooting](docs/troubleshooting.md) rather than continuing with the next terminal.
 

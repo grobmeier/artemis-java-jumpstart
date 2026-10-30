@@ -2,9 +2,9 @@
 
 ## Prepare before the session
 
-Provide JDK 21, private repository invitations and the verified runtime ZIP. On actual company computers check paths, `doctor build`, `mvnw.cmd -Ptraining clean verify` and the extracted ZIP in a directory with spaces. Prepare four cmd.exe terminals per learner. For offline source builds prepare and test the wrapper distribution and Maven dependency/plugin cache; runtime-only demonstrations need no Maven/network. Have company IT configure proxies/certificates; do not change execution policy or bypass TLS checks.
+Provide JDK 21, the public repository link and the verified runtime ZIP. On actual company computers check paths, `doctor build`, `mvnw.cmd -Ptraining clean verify` and the extracted ZIP in a directory with spaces. Prepare four cmd.exe terminals per learner. For offline source builds prepare and test the wrapper distribution and Maven dependency/plugin cache; runtime-only demonstrations need no Maven/network. Have company IT configure proxies/certificates; do not change execution policy or bypass TLS checks.
 
-Use the English revision and platform evidence recorded in [acceptance.md](acceptance.md). Public station pages and worksheets contain deliberately authored teaching material. Keep Java source, complete solutions and this internal facilitation guide in the private repository; do not copy the repository into a public website build.
+Use the English revision and platform evidence recorded in [acceptance.md](acceptance.md). Public station pages and worksheets contain deliberately authored teaching material. Java source, complete solutions and this facilitation guide are available in the public training repository. Maintain the learning website separately; do not copy the repository into the website build.
 
 ## Three stations: 3 hours 45 minutes
 

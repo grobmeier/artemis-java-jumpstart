@@ -2,7 +2,7 @@
 
 Before rebuilding, stop every client and your local broker. Windows may lock running JARs. Rebuild with `-Ptraining`, restart the broker, then use a fresh namespace in every cooperating process.
 
-Attempt the task first. The private solutions module uses direct Jakarta Messaging calls without depending on lab. Build with mvnw.cmd -Ptraining clean verify; start the broker separately. scripts\solutions.cmd takes the same arguments as exercises. Use a fresh namespace per task.
+Attempt the task first. The separate solutions module uses direct Jakarta Messaging calls without depending on lab. Build with mvnw.cmd -Ptraining clean verify; start the broker separately. scripts\solutions.cmd takes the same arguments as exercises. Use a fresh namespace per task.
 
 | Exercise | Entry | Actions | Scenario |
 |---|---|---|---|
