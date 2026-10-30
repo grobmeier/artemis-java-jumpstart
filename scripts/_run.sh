@@ -11,6 +11,14 @@ fi
 LAB_MAJOR=$(printf '%s\n' "$LAB_VERSION" | sed -n 's/^[^ ]* version "\([0-9]*\).*/\1/p')
 case "$LAB_MAJOR" in ''|*[!0-9]*) echo "Error: Java version not recognized; use JDK 21." >&2; exit 2;; esac
 if [ "$LAB_MAJOR" -lt 21 ]; then echo "Error: Java 21 or newer required." >&2; exit 2; fi
+if [ "$LAB_MODULE" = doctor-build ]; then
+  LAB_JAVAC=javac
+  if [ -n "${JAVA_HOME:-}" ]; then LAB_JAVAC="$JAVA_HOME/bin/javac"; fi
+  if ! "$LAB_JAVAC" -version >/dev/null 2>&1; then
+    echo "Error: A full JDK 21 is required, not a JRE. Check JAVA_HOME/bin/javac." >&2; exit 2
+  fi
+  exec "$LAB_JAVA" "-Dlab.home=$LAB_ROOT" "$LAB_ROOT/scripts/BuildDoctor.java"
+fi
 LAB_JAR="$LAB_ROOT/lib/$LAB_MODULE.jar"
 if [ ! -f "$LAB_JAR" ]; then LAB_JAR="$LAB_ROOT/$LAB_MODULE/target/$LAB_MODULE.jar"; fi
 if [ ! -f "$LAB_JAR" ]; then echo "Error: Build artifact is missing. Run ./mvnw clean verify (exercises: -Ptraining)." >&2; exit 2; fi

@@ -62,7 +62,7 @@ public final class FSolution {
                     System.out.flush();
                     if (action.equals("register")) return;
                     for (int i = 0; o.flag("continuous") || i < count; i++) {
-                        Message message = consumer.receive(o.number("timeout", 5000, 100, 60000));
+                        Message message = consumer.receive(o.number("timeout", 5000, 100, 300000));
                         if (message == null) {
                             if (o.flag("continuous")) continue;
                             throw new UsageException("Receive timeout expired.");
