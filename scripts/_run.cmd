@@ -23,6 +23,7 @@ if %LAB_MAJOR% LSS 21 (
   exit /b 2
 )
 set "LAB_MODULE=%~1"
+if "%LAB_MODULE%"=="doctor-build" goto buildDoctor
 set "LAB_JAR=%LAB_ROOT%\lib\%LAB_MODULE%.jar"
 if not exist "%LAB_JAR%" set "LAB_JAR=%LAB_ROOT%\%LAB_MODULE%\target\%LAB_MODULE%.jar"
 if not exist "%LAB_JAR%" (
@@ -37,3 +38,14 @@ chcp 65001 >nul
 set "LAB_EXIT=%errorlevel%"
 if defined LAB_CODEPAGE chcp %LAB_CODEPAGE% >nul
 endlocal & exit /b %LAB_EXIT%
+
+:buildDoctor
+set "LAB_JAVAC=javac.exe"
+if defined JAVA_HOME set "LAB_JAVAC=%JAVA_HOME%\bin\javac.exe"
+"%LAB_JAVAC%" -version >nul 2>&1
+if errorlevel 1 (
+  echo Error: A full JDK 21 is required, not a JRE. Check JAVA_HOME/bin/javac. 1>&2
+  exit /b 2
+)
+"%LAB_JAVA%" "-Dlab.home=%LAB_ROOT%" "%LAB_ROOT%\scripts\BuildDoctor.java"
+exit /b %errorlevel%

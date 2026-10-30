@@ -4,16 +4,47 @@ A local Java 21 lab about order processing with Apache Artemis and Jakarta Messa
 
 ## Training repository
 
-This repository is **private**: [grobmeier/artemis-java-jumpstart](https://github.com/grobmeier/artemis-java-jumpstart). Repository access requires an invitation from your trainer. After accepting your personal invitation:
+Choose the right download: **Git clone / Code → Download ZIP is source** and must be built first. The trainer's **runtime ZIP** already contains `lib/lab.jar` and `lib/broker.jar`; extract it fully and start with [RUN.md](RUN.md). Neither download includes a JDK. Do not try to run scripts inside a ZIP viewer.
+
+Before building, set **JAVA_HOME to your JDK 21 directory in every terminal**. It is the directory containing `bin`, not `bin` itself. Adjust these example paths:
+
+```bat
+rem Windows: use Command Prompt (cmd.exe), not PowerShell for these set commands.
+set "JAVA_HOME=C:\Tools\jdk-21"
+set "PATH=%JAVA_HOME%\bin;%PATH%"
+```
+
+```sh
+# Linux/macOS: use your extracted JDK 21 location.
+export JAVA_HOME="/path/to/jdk-21"
+export PATH="$JAVA_HOME/bin:$PATH"
+```
+
+If your Windows terminal opens PowerShell, run `cmd` before using the Windows examples. See [Windows setup](docs/windows-setup.md) for native PowerShell environment commands. New terminals do not inherit environment changes made in another terminal.
+
+The source, exercises and worked solutions are public: [grobmeier/artemis-java-jumpstart](https://github.com/grobmeier/artemis-java-jumpstart). Clone it to practise locally:
 
 ```bat
 git clone https://github.com/grobmeier/artemis-java-jumpstart.git
 cd artemis-java-jumpstart
 git switch -c feature/YOUR_GITHUB_NAME-exercise-a
+```
+
+Run the preflight separately; stop if it does not report `BUILD_READY`:
+
+```bat
+.\scripts\doctor.cmd build
+```
+
+Only then build the source:
+
+```bat
 .\mvnw.cmd -Ptraining clean verify
 ```
 
-Replace `YOUR_GITHUB_NAME`. Without Git, sign in and choose **Code → Download ZIP**. See [access, personal branches and GitHub Actions](docs/github-training.md). Invited collaborators can also read the sample solutions and other branches.
+Replace `YOUR_GITHUB_NAME` with your username or another personal branch label. Without Git, choose **Code → Download ZIP**. No invitation is needed to read or clone the source. See [forks, contributions and GitHub Actions](docs/github-training.md) to share changes.
+
+Wait for **BUILD SUCCESS** before continuing. The first build downloads Maven/dependencies and runs real local brokers; it can take several minutes. `doctor build` works before any JAR exists and does not need a running broker. If a command fails, stop and check [troubleshooting](docs/troubleshooting.md) rather than continuing with the next terminal.
 
 ## First local run
 
@@ -30,7 +61,7 @@ Wait for `BROKER_READY`.
 **Terminal 2 — worker:**
 
 ```bat
-.\scripts\lab.cmd s01 consume --worker alice --count 10 --namespace first-run
+.\scripts\lab.cmd s01 consume --worker alice --count 10 --namespace first-run --timeout 300000
 ```
 
 Wait for `READY`.
@@ -41,9 +72,9 @@ Wait for `READY`.
 .\scripts\lab.cmd s01 produce --count 10 --namespace first-run
 ```
 
-The worker reports ten `COMMIT` records and exits. The broker stays active. Stop it with Ctrl+C in Terminal 1 or `.\scripts\broker.cmd stop` in another terminal; wait for process exit before restart/reset.
+The worker waits up to five minutes per receive, giving you time to open Terminal 3. It reports ten `COMMIT` records and exits. If it times out, check the namespace and restart the worker before continuing. Queue messages already sent will still be waiting. The broker stays active. Stop it with Ctrl+C in Terminal 1 or `.\scripts\broker.cmd stop` in another terminal; wait for process exit before restart/reset.
 
-On Linux/macOS use `./mvnw` and `./scripts/*.sh`. Set `JAVA_HOME` to a JDK or put it on `PATH`. Java 21 is the tested baseline; newer JDKs are not automatically verified platforms. A bounded consumer exits with **2** if the requested delivery count is not reached before its receive timeout. Use `--continuous` for manual competing-worker experiments and stop with Ctrl+C. An intentional `--crash` exits with **17**.
+On Linux/macOS use `./mvnw` and `./scripts/*.sh`. Keep `JAVA_HOME` pointing to JDK 21 in each terminal. Java 21 is the tested baseline; newer JDKs are not automatically verified platforms. A bounded consumer exits with **2** if the requested delivery count is not reached before its receive timeout. Use `--continuous` for manual competing-worker experiments and stop with Ctrl+C. An intentional `--crash` exits with **17**.
 
 ## Learning path
 

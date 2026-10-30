@@ -1,5 +1,7 @@
 # Trainee exercises
 
+Before rebuilding, stop every client and your local broker. Windows may lock running JARs. Rebuild with `-Ptraining`, restart the broker, then use a fresh namespace in every cooperating process.
+
 Build an order-processing simulation. Payments, shipping and emails are simulated. Work locally first. Keep `scripts\broker.cmd start` open in Terminal 1; wait for `BROKER_READY`, then use separate terminals from the lab root. Build the editable scaffolds with `mvnw.cmd -Ptraining clean verify`. Unfinished entry points compile but report exit 2 until implemented. Only `exercises/src/main/java/de/jumpstart/*Exercise.java` intentionally contains TODOs.
 
 The executable demos provide observable references. [Worked solutions](solutions.md) live in a separate module. Use a new namespace per task and the identical value in all cooperating clients. Demos, exercises and solutions share scenario destinations: do not mix old work with a new run. Consumer `--count` includes rolled-back deliveries. With competing workers, begin with `--continuous`, stop after the combined complete ID set and browse the queue.
@@ -26,7 +28,7 @@ scripts\exercises.cmd A produce --count 10 --namespace task-a
 **Terminal 2 next:**
 
 ```bat
-scripts\exercises.cmd A consume --worker alice --count 10 --namespace task-a
+scripts\exercises.cmd A consume --worker alice --count 10 --namespace task-a --timeout 300000
 ```
 
 **Second run, Terminal 2 and 3, one command per terminal:**
@@ -64,13 +66,13 @@ Publish OrderCreated on a topic (S03). Billing and shipping need independent act
 **Terminal 2:**
 
 ```bat
-scripts\exercises.cmd B subscribe --worker billing --subscription billing --count 3 --namespace task-b
+scripts\exercises.cmd B subscribe --worker billing --subscription billing --count 3 --namespace task-b --timeout 300000
 ```
 
 **Terminal 3:**
 
 ```bat
-scripts\exercises.cmd B subscribe --worker shipping --subscription shipping --count 3 --namespace task-b
+scripts\exercises.cmd B subscribe --worker shipping --subscription shipping --count 3 --namespace task-b --timeout 300000
 ```
 
 **Terminal 4 after both are READY:**
@@ -82,7 +84,7 @@ scripts\exercises.cmd B produce --count 3 --namespace task-b
 **Terminal 2 after exit:**
 
 ```bat
-scripts\exercises.cmd B subscribe --worker late --subscription late --count 2 --namespace task-b
+scripts\exercises.cmd B subscribe --worker late --subscription late --count 2 --namespace task-b --timeout 300000
 ```
 
 **Terminal 4 after late is READY:**
@@ -125,7 +127,7 @@ scripts\exercises.cmd C produce --count 3 --namespace task-c
 **Terminal 2 next:**
 
 ```bat
-scripts\exercises.cmd C subscribe --subscription shipping --count 3 --namespace task-c
+scripts\exercises.cmd C subscribe --subscription shipping --count 3 --namespace task-c --timeout 300000
 ```
 
 **Repeat: Terminal 3 after register and produce again:**
@@ -168,7 +170,7 @@ scripts\exercises.cmd D produce --count 3 --namespace task-d
 **Terminal 2:**
 
 ```bat
-scripts\exercises.cmd D consume --count 5 --namespace task-d
+scripts\exercises.cmd D consume --count 5 --namespace task-d --timeout 300000
 ```
 
 **Terminal 3 next:**
@@ -181,7 +183,7 @@ scripts\exercises.cmd D replay --count 1 --namespace task-d
 **Terminal 2 next:**
 
 ```bat
-scripts\exercises.cmd D consume --count 1 --namespace task-d
+scripts\exercises.cmd D consume --count 1 --namespace task-d --timeout 300000
 ```
 
 **Evidence of success:** Two healthy COMMITs, three attempts for the invalid ID and one matching DLQ entry. Replay keeps the business ID but creates a new technical send; repaired work commits successfully.
@@ -212,7 +214,7 @@ scripts\exercises.cmd E produce --count 2 --id same-order --namespace task-e
 **Terminal 2:**
 
 ```bat
-scripts\exercises.cmd E consume --count 1 --crash --namespace task-e
+scripts\exercises.cmd E consume --count 1 --crash --namespace task-e --timeout 300000
 ```
 
 **Terminal 2 after exit code 17:**
@@ -243,13 +245,13 @@ Publish six events on S07. Odd orders are EU, even orders US; every third event 
 **Terminal 2:**
 
 ```bat
-scripts\exercises.cmd F subscribe --worker eu --selector "region = 'EU'" --count 3 --namespace task-f
+scripts\exercises.cmd F subscribe --worker eu --selector "region = 'EU'" --count 3 --namespace task-f --timeout 300000
 ```
 
 **Terminal 3:**
 
 ```bat
-scripts\exercises.cmd F subscribe --worker cancellations --selector "eventType = 'OrderCancelled'" --count 2 --namespace task-f
+scripts\exercises.cmd F subscribe --worker cancellations --selector "eventType = 'OrderCancelled'" --count 2 --namespace task-f --timeout 300000
 ```
 
 **Terminal 4 after both are READY:**

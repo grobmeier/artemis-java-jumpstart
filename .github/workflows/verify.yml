@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
@@ -27,7 +27,7 @@ jobs:
         run: |
           call .\mvnw.cmd -B -Ptraining clean verify
           exit /b %errorlevel%
-      - name: Build and verify on Linux
+      - name: Build and verify on Unix
         if: runner.os != 'Windows'
         shell: bash
         run: ./mvnw -B -Ptraining clean verify

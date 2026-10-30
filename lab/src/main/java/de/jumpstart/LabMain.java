@@ -209,7 +209,7 @@ public final class LabMain {
             MessageConsumer consumer)
             throws Exception {
         int limit = o.number("count", 10, 1, 10000),
-                timeout = o.number("timeout", 5000, 100, 60000),
+                timeout = o.number("timeout", 5000, 100, 300000),
                 sleep = o.number("sleep", 0, 0, 10000);
         String worker = Settings.token(o.get("worker", "worker"), "Worker");
         try (var ledger = scenario.equals("s09") ? new Ledger(s) : null) {
@@ -358,7 +358,7 @@ public final class LabMain {
                         session.createProducer(
                                 session.createQueue(s.name(scenario, "orders.incoming")))) {
             for (int i = 0; i < o.number("count", 1, 1, 1000); i++) {
-                Message m = input.receive(o.number("timeout", 5000, 100, 60000));
+                Message m = input.receive(o.number("timeout", 5000, 100, 300000));
                 if (m == null) throw new UsageException("DLQ empty or receive timeout expired");
                 var b = Messages.body(m);
                 var repaired =

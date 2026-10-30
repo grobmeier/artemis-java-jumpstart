@@ -29,7 +29,7 @@ public final class DSolution {
                                                             + "::DLQ."
                                                             + name));
                             var output = session.createProducer(destination)) {
-                        var failed = input.receive(o.number("timeout", 5000, 100, 60000));
+                        var failed = input.receive(o.number("timeout", 5000, 100, 300000));
                         if (failed == null) throw new UsageException("DLQ empty.");
                         var body = Messages.body(failed);
                         var fixed =
@@ -86,7 +86,7 @@ public final class DSolution {
                     System.out.flush();
                     if (action.equals("register")) return;
                     for (int i = 0; o.flag("continuous") || i < count; i++) {
-                        Message message = consumer.receive(o.number("timeout", 5000, 100, 60000));
+                        Message message = consumer.receive(o.number("timeout", 5000, 100, 300000));
                         if (message == null) {
                             if (o.flag("continuous")) continue;
                             throw new UsageException("Receive timeout expired.");

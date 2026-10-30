@@ -2,6 +2,10 @@
 
 | Observation | Check/action |
 |---|---|
+| Source ZIP scripts say build artifact is missing | Extract the whole source, including .mvn; set JAVA_HOME, run scripts/doctor build, then mvnw -Ptraining clean verify. A GitHub source ZIP is not the prebuilt runtime ZIP. |
+| JAVA_HOME missing even though java works | Set JAVA_HOME to the JDK root in each terminal. The Windows Maven Wrapper requires it. Use cmd.exe set commands or PowerShell $env: syntax as documented; do not mix shells. |
+| Worker exits while opening the producer terminal | Use the documented --timeout 300000 (five minutes per receive), or restart the worker. Confirm READY before sending. Queue backlog survives; non-durable topic subscribers must be restarted together before a new batch. |
+| Build cannot replace/delete a JAR | Stop all clients and your broker before rebuilding; Windows can lock JARs used by running Java processes. Rebuild, restart the broker and repeat with fresh namespaces. |
 | Java missing/wrong version | where java or command -v java, java -version, JAVA_HOME; supply JDK 21 |
 | Build artifact missing | mvnw.cmd clean verify from source; add -Ptraining for exercises/solutions; inspect lib in runtime ZIP |
 | Wrapper cannot download Maven | Company access, bootstrap cache, HTTPS/Java truststore; then Maven settings.xml for artifacts |
@@ -20,7 +24,7 @@
 | Uneven allocation | No fixed quota: wait both READY, use enough messages and small delay; consumer window affects pre-allocation |
 | Send times out | Check broker/disk. Outcome may be uncertain; preserve business ID when retrying |
 
-`doctor build` checks JDK/wrapper, not Maven repository connectivity. `doctor runtime` checks JARs, TCP and authenticated connection, not every destination permission. Broker start intentionally blocks. count must be positive; continuous mode is explicit. Unexpected errors produce a concise English diagnostic rather than a provider stack trace that might contain credentials.
+`scripts/doctor build` works in a fresh source checkout before compilation and checks the JDK/wrapper, not Maven repository connectivity. `doctor runtime` checks JARs, TCP and authenticated connection, not every destination permission. Broker start intentionally blocks. count must be positive; continuous mode is explicit. Unexpected errors produce a concise English diagnostic rather than a provider stack trace that might contain credentials.
 
 Incomplete bounded consumption exits with 2. Do not assume each competing worker receives count=5: use --continuous and reconcile the combined set. Intentional crash exits with 17. Broker detection after disconnection can take seconds; recovery uses a bounded 10000 ms timeout.
 

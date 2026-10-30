@@ -1047,6 +1047,47 @@ class AcceptanceIT {
         run("competing", "s02", "cleanup", "--confirm");
     }
 
+    @Test
+    @Order(19)
+    void buildDoctorWorksBeforeAnyLabJarExists() throws Exception {
+        Path root = temporary.resolve("unbuilt source with spaces");
+        Files.createDirectories(root.resolve("scripts"));
+        try (var scripts = Files.list(source.resolve("scripts"))) {
+            for (Path script : scripts.toList()) {
+                Path copy = root.resolve("scripts").resolve(script.getFileName());
+                Files.copy(script, copy);
+                if (copy.toString().endsWith(".sh")) assertTrue(copy.toFile().setExecutable(true));
+            }
+        }
+        Files.copy(source.resolve("pom.xml"), root.resolve("pom.xml"));
+        Files.createDirectories(root.resolve(".mvn/wrapper"));
+        for (String file : List.of("maven-wrapper.jar", "maven-wrapper.properties"))
+            Files.copy(source.resolve(".mvn/wrapper/" + file), root.resolve(".mvn/wrapper/" + file));
+        assertFalse(Files.exists(root.resolve("lab/target/lab.jar")));
+        try (var doctor = launch(root, "doctor", "build")) {
+            assertTrue(doctor.end(0).contains("BUILD_READY"));
+        }
+        Files.delete(root.resolve("pom.xml"));
+        try (var runtime = launch(root, "doctor", "build")) {
+            assertTrue(runtime.end(2).contains("runtime ZIP runs demos only"));
+        }
+    }
+
+    @Test
+    @Order(20)
+    void firstWorkerAllowsTimeToOpenTheProducerTerminal() throws Exception {
+        // The quickstart starts its worker first. A reader needs more than the old five seconds.
+        try (var worker = jar("lab", "slow-quickstart", "s01", "consume", "--count", "10",
+                "--worker", "alice", "--timeout", "300000")) {
+            worker.ready("READY");
+            Thread.sleep(6500);
+            assertTrue(worker.process.isAlive(), worker.text());
+            Set<String> sent = ids(run("slow-quickstart", "s01", "produce", "--count", "10"), "SEND");
+            assertEquals(sent, commits(worker.end(0)));
+        }
+        assertTrue(run("slow-quickstart", "s01", "browse").contains("visible=0"));
+    }
+
     static Job launch(Path root, String script, String... args) throws Exception {
         List<String> command = new ArrayList<>();
         Path file = root.resolve("scripts/" + script + (isWindows() ? ".cmd" : ".sh"));
